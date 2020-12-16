@@ -9,7 +9,7 @@ import logging
 from git import Repo
 
 headers = {'Authorization': 'token <insert_token_for_private_repo>'} # for private repo's we want to specify the access token to the github repo
-git_repo_base_url = "https://api.github.com/repos/vladd-bit/tagtest"
+git_repo_base_url = "https://api.github.com/repos/kawsarnoor/MedCatModels/"
 
 
 # TO DO:
