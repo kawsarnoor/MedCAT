@@ -1,3 +1,11 @@
+import fire
+import sys
+import os
+import subprocess
+import markdown
+import logging
+from git import Repo
+
 headers = {'Authorization': 'token <insert_token_for_private_repo>'} # for private repo's we want to specify the access token to the github repo
 git_repo_base_url = "https://api.github.com/repos/kawsarnoor/MedCatModels/"
 
