@@ -16,7 +16,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
-    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'cli'],
+    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.cli'],
     install_requires=[
         'numpy~=1.18',
         'pandas~=1.0',
