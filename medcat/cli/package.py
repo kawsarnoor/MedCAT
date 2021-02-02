@@ -389,7 +389,7 @@ def generate_model_name(repo, model_name, parent_model_name, version):
             else:
                 version = "1.0"
 
-        elif version == "auto":
+        if version == "auto":
             version = "1.0"
 
     except Exception as exception:
