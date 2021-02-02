@@ -2,8 +2,6 @@ import git
 import os
 import sys
 import logging
-
-from numpy.core.numeric import full
 import medcat
 
 def prompt_statement(prompt_text, answer="yes"):
@@ -34,6 +32,7 @@ def get_downloaded_local_model_folder(model_name):
         
 
 def get_local_model_storage_path(storage_path=os.path.dirname(medcat.__file__), models_dir="models"):
+    
     medcat_model_installation_dir_path = os.path.join(storage_path, models_dir)
 
     if not os.path.exists(medcat_model_installation_dir_path):
@@ -53,7 +52,8 @@ def is_dir_git_repository(path):
     try:
         _ = git.Repo(path).git_dir
         return True
-    except git.exc.InvalidGitRepositoryError:
+    except git.exc.InvalidGitRepositoryError as exception:
+        logging.error("Folder:" + path + " is not a git repository. Description:" + repr(exception))
         return False
 
 def get_permitted_push_file_list():

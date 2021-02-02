@@ -94,6 +94,8 @@ class Vocab(object):
         with open(os.path.join(system_utils.get_downloaded_local_model_folder(model_name), output_file_name), 'rb') as f:
             self.__dict__ = pickle.load(f)
 
+        self.vc_model_tag_data = model_name
+
     def add_word(self, word, cnt=1, vec=None, replace=True):
         """Add a word to the vocabulary
 

@@ -1,5 +1,4 @@
 import fire
-from git.repo.fun import is_git_dir
 import requests
 import shutil
 import os
@@ -101,14 +100,15 @@ def unpack_asset(model_name, git_repo_url, remote_name="origin", branch="master"
     except Exception as exception:
         logging.error("Error unpacking model file asset : " + repr(exception))
 
-def download(model_name, git_auth_token=""):
+def download(model_name, git_auth_token):
 
-    git_auth_token = ""
+    if git_auth_token.strip() == "":
+        raise ValueError("No git token given, please provide your git token.")
     
     # Headers
     headers = {"Accept" : "application/vnd.github.v3+json", "Authorization": "token " + git_auth_token}
 
-    user_repo = "vladd-bit/tagtest"  # 'kawsarnoor/MedCatModels/'
+    user_repo = "kawsarnoor/MedCatModels"
 
     git_repo_url = "https://github.com/" + user_repo + ".git"
 

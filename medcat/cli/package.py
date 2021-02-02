@@ -11,7 +11,7 @@ import git
 from git import Repo
 from functools import reduce
 from requests.api import head
-from .download import download_asset, get_matching_version, get_all_available_model_tags
+from .download import get_all_available_model_tags
 from .system_utils import *
 from .modeltagdata import ModelTagData
 
@@ -44,13 +44,13 @@ def select_model_packaging_folder(request_url, headers, model_name):
                            cwd=get_local_model_storage_path())
         
         elif not found_matching_folders and available_model_tags:
-            print("No models detected on the machine, however, there are available releases available for download: ", found_matching_tags)
+            print("No models detected on the machine, however, there are other releases available for download: ", available_model_tags)
             version_choice = input("Please input the model_name-version:")
             subprocess.run([sys.executable, "-m", "medcat", "download", str(version_choice)],
                            cwd=get_local_model_storage_path())
 
         elif prompt_statement("Is this a new model release ?"):  # if model.provenance_model != "" && no tags with model name exist:
-            if prompt_statement("Should the model_name : " + '\033[1m' + model_name + '\033[0m'  + " be used ? the version will be 1.0 by default, another name can be provided by answering NO."):
+            if prompt_statement("Should the model_name : " + "\033[1m" + model_name + "\033[0m"  + " be used ? the version will be 1.0 by default, another name can be provided by answering NO."):
                 version_choice = model_name
             else:
                 version_choice = input("give the model release a name, the version will be 1.0 by default:")
@@ -97,7 +97,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
     headers = {"Accept": "application/vnd.github.v3+json", "Authorization": "token " + git_auth_token}
     upload_headers = {**headers, "Content-Type": "application/octet-stream"}
 
-    user_repo = "vladd-bit/tagtest"  # 'kawsarnoor/MedCatModels/'
+    user_repo = "kawsarnoor/MedCatModels"
 
     git_repo_url = "https://github.com/" + user_repo + ".git"
     request_url = 'https://api.github.com/repos/' + user_repo + "/"
@@ -108,7 +108,8 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
     # folder where the model files are: /lib/python/site-packages/medcat-{version}/models/...
     current_dir = get_local_model_storage_path(get_local_model_storage_path(), models_dir=select_model_packaging_folder(request_url, headers, model_name))
     
-    if not is_dir_git_repository(current_dir):
+
+    if current_dir != "" and not is_dir_git_repository(current_dir):
         create_new_base_repository(current_dir, git_repo_url)
     
     # copy files to model folder repo (inside site-packages)
@@ -119,20 +120,16 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
     active_remote = "origin"
     
     try:
-        python_executable = sys.executable
-      
         print("Current working dir: ", current_dir)
         print("===================================================================")
         print("Git status:")
         subprocess.call(["git", "status"], cwd=current_dir)
         print("===================================================================")
         print("DVC status:")
-        subprocess.call([python_executable, "-m", "dvc","status"], cwd=current_dir)
+        subprocess.call([sys.executable, "-m", "dvc","status"], cwd=current_dir)
         print("===================================================================")
 
         repo = Repo(current_dir, search_parent_directories=True)
-        
-        #repo_config = repo.config_reader()
 
         git_api_repo_base_url = "https://api.github.com/repos/" + '/'.join(repo.remotes.origin.url.split('.git')[0].split('/')[-2:])
         uploads_git_repo_base_url = "https://uploads.github.com/repos/" + '/'.join(repo.remotes.origin.url.split('.git')[0].split('/')[-2:])
@@ -141,7 +138,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
         subprocess.call(["git", "fetch", "--tags", "--force"], cwd=current_dir)   
         
         # Update dvc repo files (if any) before checking for untracked files ( we need to regenerate dvc file hashes if there were changes)
-        subprocess.run([python_executable, "-m", "dvc", "commit"], cwd=current_dir) # capture_output=False, text=True, input="y\n")
+        subprocess.run([sys.executable, "-m", "dvc", "commit"], cwd=current_dir) # capture_output=False, text=True, input="y\n")
 
         active_branch = repo.active_branch
 
@@ -163,7 +160,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
                     for file_name in untracked_files:
                         if prompt_statement("Add : " + file_name + " to the DVC repo ?"):      
                             if ".dvc" not in file_name and file_name not in repo.ignored(file_name):
-                                subprocess.call([python_executable, "-m", "dvc","add", file_name], cwd=current_dir)
+                                subprocess.call([sys.executable, "-m", "dvc","add", file_name], cwd=current_dir)
                                 repo.git.add(file_name + ".dvc")
                             elif ".dvc" in file_name and file_name not in repo.ignored(file_name):
                                 repo.git.add(file_name)
@@ -172,7 +169,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
                 else: 
                     for file_name in untracked_files:
                         if ".dvc" not in file_name and file_name not in repo.ignored(file_name):
-                            subprocess.call([python_executable, "-m", "dvc","add", file_name], cwd=current_dir)
+                            subprocess.call([sys.executable, "-m", "dvc","add", file_name], cwd=current_dir)
                     repo.git.add(all=True)
 
             for root, dirs, files in os.walk(current_dir):
@@ -187,7 +184,9 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
         print("Staged files:", staged_files)
 
         if staged_files:
-            model_name, parent_model_name, version = generate_model_name(repo, model_name, parent_model_name, version)  
+            model_name, parent_model_name, version = generate_model_name(repo, model_name, parent_model_name, version) 
+
+            #inject_model_tag_data 
             
             if parent_model_name != "":
                 tag_name = str(model_name) + "-" + str(parent_model_name) + "-" + str(version)
@@ -211,7 +210,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
                 }
 
                 create_tag_request = requests.post(url=git_api_repo_base_url + "/releases", data=json.dumps(tag_data), headers=headers)
-                
+
                 if create_tag_request.status_code == 201:
                     print("Success, created release : " + release_name + ", with tag : " + tag_name + " .")
 
@@ -254,7 +253,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
 
                 while True:
                     try:
-                        subprocess.call([python_executable, "-m", "dvc", "push"], cwd=current_dir)
+                        subprocess.call([sys.executable, "-m", "dvc", "push"], cwd=current_dir)
                         break
                     except:
                         pass
@@ -262,7 +261,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
                 raise Exception("Process cancelled... reverting state...")
         else:
             print("No changes to be submitted. Checking model files with storage server for potential update pushing....")
-            subprocess.call([python_executable, "-m", "dvc", "push"], cwd=current_dir)
+            subprocess.call([sys.executable, "-m", "dvc", "push"], cwd=current_dir)
         
     except Exception as exception:
         """
@@ -287,8 +286,8 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
         # delete the bundle file
         if bundle_file_path != "":
             os.remove(bundle_file_path)
-   
 
+  
 
 def generate_model_card_info(model_name, model_folder_path, parent_model_name="", version="", tag_name=""):
     model_card = ""
@@ -399,19 +398,17 @@ def generate_model_name(repo, model_name, parent_model_name, version):
     return model_name, parent_model_name, version
 
 
-def package(model_name,  git_auth_token="", parent_model_name="", version="auto"):
+def package(model_name, git_auth_token, parent_model_name="", version="auto"):
 
     # TODO : implement credential cache
     # git config credential.helper 'cache --timeout=300'
 
-    git_auth_token = ""
-
-    subprocess.run(["git", "config", "credential.helper", "'cache --timeout=400'"])
+    #subprocess.run(["git", "config", "credential.helper", "'cache --timeout=400'"])
 
     if git_auth_token.strip() == "":
         raise ValueError("No git token given, please provide your git token.")
 
-    upload_model(model_name, parent_model_name, version, git_auth_token)
+    upload_model(model_name, parent_model_name=parent_model_name, version=version, git_auth_token=git_auth_token)
 
 
 if __name__ == '__main__':
