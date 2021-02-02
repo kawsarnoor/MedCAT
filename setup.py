@@ -29,6 +29,8 @@ setuptools.setup(
         'Flask~=1.1',
         'sklearn~=0.0',
         'elasticsearch==7.9.1',
+        'gitpython~=3.1.12',
+        'dvc~=1.11.1'
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -33,7 +33,16 @@ def select_model_packaging_folder(request_url, headers, model_name):
 
         version_choice = ""
         # to add the automatic option once model loading has the extra provenance fields
-        if found_matching_folders:
+        
+        if prompt_statement("Is this a new model release ?"):  # if model.provenance_model != "" && no tags with model name exist:
+            if prompt_statement("Should the model_name : " + "\033[1m" + model_name + "\033[0m"  + " be used ? the version will be 1.0 by default, another name can be provided by answering NO."):
+                version_choice = model_name
+            else:
+                version_choice = input("give the model release a name, the version will be 1.0 by default:")
+            #if prompt_statement("Are you certain that " + '\033[1m' +  version_choice + '\033[0m'  + " is correct ? this process is irreversible, please double-check."):
+            shutil.rmtree(os.path.join(get_local_model_storage_path(), version_choice), ignore_errors=True)
+
+        elif found_matching_folders:
             print("Found the following model folders matching the name given:", found_matching_folders)
             version_choice = input("Please input what folder to use for packaging : ")
 
@@ -48,14 +57,6 @@ def select_model_packaging_folder(request_url, headers, model_name):
             version_choice = input("Please input the model_name-version:")
             subprocess.run([sys.executable, "-m", "medcat", "download", str(version_choice)],
                            cwd=get_local_model_storage_path())
-
-        elif prompt_statement("Is this a new model release ?"):  # if model.provenance_model != "" && no tags with model name exist:
-            if prompt_statement("Should the model_name : " + "\033[1m" + model_name + "\033[0m"  + " be used ? the version will be 1.0 by default, another name can be provided by answering NO."):
-                version_choice = model_name
-            else:
-                version_choice = input("give the model release a name, the version will be 1.0 by default:")
-            #if prompt_statement("Are you certain that " + '\033[1m' +  version_choice + '\033[0m'  + " is correct ? this process is irreversible, please double-check."):
-            shutil.rmtree(os.path.join(get_local_model_storage_path(), version_choice), ignore_errors=True)
 
         elif not version_choice or not available_model_tags:
             logging.error("Model name not provided or no model tags found for download, exitting")
