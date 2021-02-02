@@ -1,5 +1,7 @@
 import numpy as np
 import pickle
+import os
+from medcat.cli import ModelTagData, system_utils
 
 class Vocab(object):
     def __init__(self):
@@ -7,7 +9,9 @@ class Vocab(object):
         self.index2word = {}
         self.vec_index2word = {}
         self.unigram_table = []
-
+        
+        # Model Version Control variables
+        self.vc_model_tag_data = ModelTagData()
 
     def inc_or_add(self, word, cnt=1, vec=None):
         if word not in self.vocab:
@@ -63,6 +67,32 @@ class Vocab(object):
             if token in self:
                 self.vocab[token]['cnt'] += 1
 
+    def save_model(self, model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, output_file_name="vocab.dat"):
+
+        if not model_name:
+            self.vc_model_tag_data.model_name = model_name
+        if not parent_model_name:
+            self.vc_model_tag_data.parent_model_name = parent_model_name
+        if not model_version_number:
+            self.vc_model_tag_data.version = model_version_number
+        if not commit_hash:
+            self.vc_model_tag_data.commit_hash = commit_hash
+        if not git_repo_url:
+            self.vc_model_tag_data.git_repo = git_repo_url
+
+        """ Saves variables of this object
+            Files saved are in the model's folder
+        """
+        with open(os.join.path(".", output_file_name), 'wb') as f:
+            pickle.dump(self.__dict__, f)
+
+    def load_model(self, model_name, output_file_name="vocab.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+
+        with open(os.path.join(system_utils.get_downloaded_local_model_folder(model_name), output_file_name), 'rb') as f:
+            self.__dict__ = pickle.load(f)
 
     def add_word(self, word, cnt=1, vec=None, replace=True):
         """Add a word to the vocabulary

@@ -9,6 +9,7 @@ from medcat.utils.attr_dict import AttrDict
 from medcat.utils.loggers import basic_logger
 import os
 import pandas as pd
+from medcat.cli import ModelTagData, system_utils
 
 log = basic_logger("cdb")
 class CDB(object):
@@ -51,6 +52,8 @@ class CDB(object):
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
         self.sim_vectors = None
 
+        # Model Version Control variables
+        self.vc_model_tag_data = ModelTagData()
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
                     is_pref_name=False, tui=None, pretty_name='',
@@ -401,13 +404,38 @@ class CDB(object):
         with open(path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
+    def save_model(self, model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, output_file_name="cdb.dat"):
+
+        if not model_name:
+            self.vc_model_tag_data.model_name = model_name
+        if not parent_model_name:
+            self.vc_model_tag_data.parent_model_name = parent_model_name
+        if not model_version_number:
+            self.vc_model_tag_data.version = model_version_number
+        if not commit_hash:
+            self.vc_model_tag_data.commit_hash = commit_hash
+        if not git_repo_url:
+            self.vc_model_tag_data.git_repo = git_repo_url
+
+        """ Saves variables of this object
+            Files saved are in the model's folder
+        """
+        with open(os.join.path(".", output_file_name), 'wb') as f:
+            pickle.dump(self.__dict__, f)
 
     def load_dict(self, path):
         """ Loads variables of this object
         """
         with open(path, 'rb') as f:
             self.__dict__ = pickle.load(f)
+    
+    def load_model(self, model_name, output_file_name="cdb.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
 
+        with open(os.path.join(system_utils.get_downloaded_local_model_folder(model_name), output_file_name), 'rb') as f:
+            self.__dict__ = pickle.load(f)
 
     def import_training(self, cdb, overwrite=True):
         r'''
