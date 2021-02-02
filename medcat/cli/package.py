@@ -186,7 +186,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token):
         if staged_files:
             model_name, parent_model_name, version = generate_model_name(repo, model_name, parent_model_name, version) 
 
-            #inject_model_tag_data 
+            #TO DO : inject_model_tag_data into individual model files ?
             
             if parent_model_name != "":
                 tag_name = str(model_name) + "-" + str(parent_model_name) + "-" + str(version)
