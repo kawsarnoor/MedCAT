@@ -50,7 +50,7 @@ def get_local_model_storage_path(storage_path=os.path.dirname(medcat.__file__), 
 
 def is_dir_git_repository(path):
     try:
-        _ = git.Repo(path).git_dir
+        repo = git.Repo(path).git_dir
         return True
     except git.exc.InvalidGitRepositoryError as exception:
         logging.error("Folder:" + path + " is not a git repository. Description:" + repr(exception))

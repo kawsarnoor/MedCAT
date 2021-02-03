@@ -436,6 +436,7 @@ class CDB(object):
 
         with open(os.path.join(system_utils.get_downloaded_local_model_folder(model_name), output_file_name), 'rb') as f:
             self.__dict__ = pickle.load(f)
+        self.vc_model_tag_data.model_name = model_name
 
     def import_training(self, cdb, overwrite=True):
         r'''

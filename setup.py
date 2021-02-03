@@ -30,7 +30,7 @@ setuptools.setup(
         'sklearn~=0.0',
         'elasticsearch==7.9.1',
         'gitpython~=3.1.12',
-        'dvc~=1.11.1'
+        'dvc~=1.11.15'
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

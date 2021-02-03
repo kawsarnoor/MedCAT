@@ -102,13 +102,13 @@ def unpack_asset(model_name, git_repo_url, remote_name="origin", branch="master"
 
 def download(model_name, git_auth_token):
 
-    if git_auth_token.strip() == "":
+    if git_auth_token.strip() == "": 
         raise ValueError("No git token given, please provide your git token.")
     
     # Headers
     headers = {"Accept" : "application/vnd.github.v3+json", "Authorization": "token " + git_auth_token}
 
-    user_repo = "kawsarnoor/MedCatModels"
+    user_repo = "kawsarnoor/MedCatModels" # "kawsarnoor/MedCatModels"
 
     git_repo_url = "https://github.com/" + user_repo + ".git"
 
@@ -142,7 +142,7 @@ def download(model_name, git_auth_token):
                         result = get_matching_version(model_choice, request_url, headers)
                         print("Found release ", model_choice, ". Downloading...")
                         download_asset(model_choice, request_url, asset_id=result["tag_asset_id"], headers=headers)
-                        unpack_asset(model_name, git_repo_url)
+                        unpack_asset(model_choice, git_repo_url)
                         break
             else:
                 print("No release tags found with the given name or containing a similar name, however, the following releases are available:")
@@ -153,7 +153,7 @@ def download(model_name, git_auth_token):
                         result = get_matching_version(model_choice, request_url, headers)
                         print("Found release ", model_choice, ". Downloading...")
                         download_asset(model_choice, request_url, asset_id=result["tag_asset_id"], headers=headers)
-                        unpack_asset(model_name, git_repo_url)
+                        unpack_asset(model_choice, git_repo_url)
                         break
         else:
             print("No model release tags found on repository: " + request_url)
