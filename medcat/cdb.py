@@ -1,5 +1,6 @@
 """ Representation class for CDB data
 """
+import logging
 import pickle
 import numpy as np
 from scipy.sparse import dok_matrix
@@ -404,7 +405,7 @@ class CDB(object):
         with open(path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
-    def save_model(self, model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, output_file_name="cdb.dat"):
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_file_name="cdb.dat"):
 
         if not model_name:
             self.vc_model_tag_data.model_name = model_name
@@ -420,7 +421,7 @@ class CDB(object):
         """ Saves variables of this object
             Files saved are in the model's folder
         """
-        with open(os.join.path(".", output_file_name), 'wb') as f:
+        with open(os.path.join("./", output_file_name), 'wb') as f:
             pickle.dump(self.__dict__, f)
 
     def load_dict(self, path):
@@ -429,14 +430,20 @@ class CDB(object):
         with open(path, 'rb') as f:
             self.__dict__ = pickle.load(f)
     
-    def load_model(self, model_name, output_file_name="cdb.dat"):
+    
+    def load_model(self, model_name, output_file_name="vocab.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-
-        with open(os.path.join(system_utils.get_downloaded_local_model_folder(model_name), output_file_name), 'rb') as f:
-            self.__dict__ = pickle.load(f)
-        self.vc_model_tag_data.model_name = model_name
+        data = system_utils.load_model_from_file(model_name, output_file_name)
+    
+        if data:
+            self.__dict__ = data
+            try:
+                if not hasattr(self, "vc_model_tag_data"):
+                    self.vc_model_tag_data = ModelTagData(model_name)
+            except Exception as exception:
+                logging.error(repr(exception))
 
     def import_training(self, cdb, overwrite=True):
         r'''

@@ -1,8 +1,37 @@
 import git
 import os
 import sys
+import pickle
 import logging
 import medcat
+from .modeltagdata import ModelTagData
+
+def load_model_from_file(model_name, output_file_name):
+    full_file_path = os.path.join(get_downloaded_local_model_folder(model_name), output_file_name)
+    data_dict = False
+
+    with open(full_file_path, 'rb') as f:
+        data_dict = pickle.load(f)
+
+    return data_dict
+
+def get_auth_environemnt_vars():
+    """
+        returns a dict with the github username and git access token
+    """
+    env_var_field_mapping = {"username": "MEDCAT_GIT_USERNAME",
+     "git_auth_token" : "MEDCAT_GIT_AUTH_TOKEN",
+      "git_repo_url" : "MEDCAT_GIT_REPO_URL"}
+
+    auth_vars = { "username" : os.getenv(env_var_field_mapping["username"], ""), 
+                  "git_auth_token": os.getenv(env_var_field_mapping["git_auth_token"], ""),
+                  "git_repo_url":  os.getenv(env_var_field_mapping["git_repo_url"], "") }
+    
+    for k,v in auth_vars.items():
+        if not v.strip():
+            raise ValueError("CONFIG NOT SET for :  " + k + "  , from environment var : " + env_var_field_mapping[k])
+
+    return auth_vars
 
 def prompt_statement(prompt_text, answer="yes"):
     valid_answers = {"yes": True, "no": False, "y": True, "n": False}
@@ -57,4 +86,4 @@ def is_dir_git_repository(path):
         return False
 
 def get_permitted_push_file_list():
-    return ["cdb.dat", "vocab.dat"]
+    return ["cdb.dat", "vocab.dat", "modelcard.md", "modelcard.json"]

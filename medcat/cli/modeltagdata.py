@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 @dataclass
 class ModelTagData:
-    model_name: str
-    parent_model_name: str
-    version: str
-    commit_hash: str
+    model_name: str = ""
+    parent_model_name: str = ""
+    version: str = ""
+    commit_hash: str = ""
     git_repo: str = ""

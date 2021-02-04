@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pickle
 import os
@@ -67,10 +68,13 @@ class Vocab(object):
             if token in self:
                 self.vocab[token]['cnt'] += 1
 
-    def save_model(self, model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, output_file_name="vocab.dat"):
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_file_name="vocab.dat"):
 
         if not model_name:
-            self.vc_model_tag_data.model_name = model_name
+            #if self.vc_model_tag_data.model_name.strip() != model_name:
+            #    self.vc_model_tag_data.model_name = self.vc_model_tag_data.model_name + "-" + model_name
+            #else:
+                self.vc_model_tag_data.model_name = model_name
         if not parent_model_name:
             self.vc_model_tag_data.parent_model_name = parent_model_name
         if not model_version_number:
@@ -83,18 +87,23 @@ class Vocab(object):
         """ Saves variables of this object
             Files saved are in the model's folder
         """
-        with open(os.join.path(".", output_file_name), 'wb') as f:
+        with open(os.path.join(".", output_file_name), 'wb') as f:
             pickle.dump(self.__dict__, f)
 
     def load_model(self, model_name, output_file_name="vocab.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-
-        with open(os.path.join(system_utils.get_downloaded_local_model_folder(model_name), output_file_name), 'rb') as f:
-            self.__dict__ = pickle.load(f)
-
-        self.vc_model_tag_data = model_name
+        data = system_utils.load_model_from_file(model_name, output_file_name)
+    
+        if data:
+            self.__dict__ = data
+            try:
+                if not hasattr(self, "vc_model_tag_data"):
+                    self.vc_model_tag_data = ModelTagData(model_name)
+            except Exception as exception:
+                logging.error(repr(exception))
+                
 
     def add_word(self, word, cnt=1, vec=None, replace=True):
         """Add a word to the vocabulary

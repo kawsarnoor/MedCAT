@@ -100,19 +100,19 @@ def unpack_asset(model_name, git_repo_url, remote_name="origin", branch="master"
     except Exception as exception:
         logging.error("Error unpacking model file asset : " + repr(exception))
 
-def download(model_name, git_auth_token):
+def download(model_name):
 
-    if git_auth_token.strip() == "": 
-        raise ValueError("No git token given, please provide your git token.")
+    env_git_auth_token = get_auth_environemnt_vars()["git_auth_token"]
+    env_git_repo_url = get_auth_environemnt_vars()["git_repo_url"]
     
     # Headers
-    headers = {"Accept" : "application/vnd.github.v3+json", "Authorization": "token " + git_auth_token}
+    headers = {"Accept" : "application/vnd.github.v3+json", "Authorization": "token " + env_git_auth_token}
+    
+    git_repo_url = env_git_repo_url
 
-    user_repo = "kawsarnoor/MedCatModels" # "kawsarnoor/MedCatModels"
+    user_repo_and_project = '/'.join(git_repo_url.split('.git')[0].split('/')[-2:])
 
-    git_repo_url = "https://github.com/" + user_repo + ".git"
-
-    request_url = 'https://api.github.com/repos/' + user_repo + "/"
+    request_url = 'https://api.github.com/repos/' + user_repo_and_project + "/"
 
     # Try to get exact match:
     result = get_matching_version(model_name, request_url, headers)
