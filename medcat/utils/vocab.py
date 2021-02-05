@@ -97,12 +97,12 @@ class Vocab(object):
         data = system_utils.load_model_from_file(model_name, output_file_name)
     
         if data:
-            self.__dict__ = data
-            try:
-                if not hasattr(self, "vc_model_tag_data"):
-                    self.vc_model_tag_data = ModelTagData(model_name)
-            except Exception as exception:
-                logging.error(repr(exception))
+            self = data
+        try:
+            if not hasattr(self, "vc_model_tag_data"):
+                self.vc_model_tag_data = ModelTagData(model_name)
+        except Exception as exception:
+            logging.error(repr(exception))
                 
 
     def add_word(self, word, cnt=1, vec=None, replace=True):

@@ -422,7 +422,7 @@ class CDB(object):
             Files saved are in the model's folder
         """
         with open(os.path.join("./", output_file_name), 'wb') as f:
-            pickle.dump(self.__dict__, f)
+            pickle.dump(self, f)
 
     def load_dict(self, path):
         """ Loads variables of this object
@@ -431,14 +431,14 @@ class CDB(object):
             self.__dict__ = pickle.load(f)
     
     
-    def load_model(self, model_name, output_file_name="vocab.dat"):
+    def load_model(self, model_name, output_file_name="cdb.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
         data = system_utils.load_model_from_file(model_name, output_file_name)
     
         if data:
-            self.__dict__ = data
+            self = data
             try:
                 if not hasattr(self, "vc_model_tag_data"):
                     self.vc_model_tag_data = ModelTagData(model_name)

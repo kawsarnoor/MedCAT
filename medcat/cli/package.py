@@ -16,6 +16,14 @@ from .system_utils import *
 from .modeltagdata import ModelTagData
 
 
+"""
+TO DO : INSTITUTION_NAME-MODEL_NAME-version1.0
+
+PARENT MODEL SHOULD NOT APPEAR IN THE MODEL TAGS
+IT SHOULD APPEAR IN THE CARD ONLY NAME
+
+"""
+
 def select_model_packaging_folder(request_url, headers, model_name, git_auth_token):
 
     if model_name != "":
@@ -250,7 +258,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                     req_release_data = requests.get(url=git_api_repo_base_url + "/releases/tags/" + str(tag_name), headers=headers)
 
                     if req_release_data.status_code == 200:
-
+                        
                         file_asset_url = uploads_git_repo_base_url +  "/releases/" + str(req_release_data.json()["id"]) + "/assets?name=" + str(tag_name) + ".bundle"
                         delete_asset_url = git_api_repo_base_url + "/releases/assets/"
 

@@ -31,6 +31,7 @@ setuptools.setup(
         'elasticsearch==7.9.1',
         'fire~=0.4.0',
         'gitpython~=3.1.12',
+        'pydrive2~=1.7.0',
         'dvc~=1.11.15'
         ],
     classifiers=[
