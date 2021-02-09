@@ -8,12 +8,24 @@ from .modeltagdata import ModelTagData
 
 def load_model_from_file(model_name, output_file_name):
     full_file_path = os.path.join(get_downloaded_local_model_folder(model_name), output_file_name)
-    data_dict = False
+    data = False
 
     with open(full_file_path, 'rb') as f:
-        data_dict = pickle.load(f)
+        data = pickle.load(f)
 
-    return data_dict
+        try:
+            if isinstance(data, dict) and "vc_model_tag_data" not in data.keys():
+                data["vc_model_tag_data"] = ModelTagData(model_name)
+            elif not hasattr(data, "vc_model_tag_data"):
+                data.vc_model_tag_data = ModelTagData(model_name)
+            elif not data.vc_model_tag_data.model_name:
+                data.vc_model_tag_data.model_name = model_name
+                
+        except Exception as exception:
+            logging.error("could not add vc_model_tag_data attribute to model data file")
+            logging.error(repr(exception))
+
+    return data
 
 def get_auth_environemnt_vars():
     """

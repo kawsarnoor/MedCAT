@@ -282,13 +282,9 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                         print("Success, created release : " + release_name + ", with tag : " + tag_name + " .")
                 else:
                     raise Exception("Failed to create release : " + release_name + ", with tag : " + tag_name + " . \n" + "Reason:" + create_tag_request.text)
-
-                while True:
-                    try:
-                        subprocess.call([sys.executable, "-m", "dvc", "push"], cwd=current_dir)
-                        break
-                    except:
-                        pass
+                
+                subprocess.call([sys.executable, "-m", "dvc", "push"], cwd=current_dir)
+                  
             else:
                 raise Exception("Process cancelled... reverting state...")
         else:

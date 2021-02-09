@@ -91,12 +91,8 @@ def unpack_asset(model_name, git_repo_url, remote_name="origin", branch="master"
             if os.path.isfile(model_asset_bundle_file):
                 os.remove(model_asset_bundle_file)
 
-            while True:
-                try:
-                    subprocess.run([sys.executable, "-m", "dvc", "pull"], cwd=model_asset_dir_location, check=True)
-                    break
-                except:
-                    pass
+            subprocess.run([sys.executable, "-m", "dvc", "pull"], cwd=model_asset_dir_location, check=True)
+            
     except Exception as exception:
         logging.error("Error unpacking model file asset : " + repr(exception))
 

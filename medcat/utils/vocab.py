@@ -70,40 +70,35 @@ class Vocab(object):
 
     def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_file_name="vocab.dat"):
 
-        if not model_name:
-            #if self.vc_model_tag_data.model_name.strip() != model_name:
-            #    self.vc_model_tag_data.model_name = self.vc_model_tag_data.model_name + "-" + model_name
-            #else:
-                self.vc_model_tag_data.model_name = model_name
-        if not parent_model_name:
+        if model_name.strip() != "":
+            self.vc_model_tag_data.model_name = model_name
+        if parent_model_name.strip():
             self.vc_model_tag_data.parent_model_name = parent_model_name
-        if not model_version_number:
+        if model_version_number.strip():
             self.vc_model_tag_data.version = model_version_number
-        if not commit_hash:
+        if commit_hash.strip():
             self.vc_model_tag_data.commit_hash = commit_hash
-        if not git_repo_url:
+        if git_repo_url.strip():
             self.vc_model_tag_data.git_repo = git_repo_url
 
         """ Saves variables of this object
             Files saved are in the model's folder
         """
         with open(os.path.join(".", output_file_name), 'wb') as f:
-            pickle.dump(self.__dict__, f)
-
-    def load_model(self, model_name, output_file_name="vocab.dat"):
+            pickle.dump(self, f)
+         
+    @classmethod     
+    def load_model(self, model_name, input_file_name="vocab.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-        data = system_utils.load_model_from_file(model_name, output_file_name)
-    
-        if data:
-            self = data
-        try:
-            if not hasattr(self, "vc_model_tag_data"):
-                self.vc_model_tag_data = ModelTagData(model_name)
-        except Exception as exception:
-            logging.error(repr(exception))
-                
+        data = system_utils.load_model_from_file(model_name, input_file_name)
+        if isinstance(data, dict):
+            obj = Vocab()
+            obj.__dict__ = data
+            return obj
+        else:
+            return data
 
     def add_word(self, word, cnt=1, vec=None, replace=True):
         """Add a word to the vocabulary
