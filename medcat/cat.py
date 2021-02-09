@@ -96,24 +96,26 @@ class CAT(object):
         return self.nlp(text)
 
     def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat"):
-        self.vocab.save_model(model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, vocab_output_file_name)
-        self.cdb.save_model(model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, cdb_output_file_name)
+        self.vocab.save_model(output_file_name=vocab_output_file_name)
+        self.cdb.save_model(output_file_name=cdb_output_file_name)
 
-    def load_model(self, model_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat"):
+        # TODO Add meta-anns saving
+
+    def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-        vocab = Vocab.load_model(model_name, vocab_input_file_name)
-        cdb = CDB.load_model(model_name, cdb_input_file_name)
+        vocab = Vocab.load_model(model_full_tag_name, vocab_input_file_name)
+        cdb = CDB.load_model(model_full_tag_name, cdb_input_file_name)
 
         if vocab:
             self.vocab = vocab
         else:
-            print("Could not load vocabulary from model:", model_name)
+            print("Could not load vocabulary from model:", model_full_tag_name)
         if cdb:
             self.cdb = cdb
         else:
-            print("Could not load concept database from model:", model_name)
+            print("Could not load concept database from model:", model_full_tag_name)
 
     def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=None, anneal=None, spacy_doc=None):
         if spacy_doc is None:

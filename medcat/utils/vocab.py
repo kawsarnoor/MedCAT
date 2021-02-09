@@ -69,7 +69,12 @@ class Vocab(object):
                 self.vocab[token]['cnt'] += 1
 
     def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_file_name="vocab.dat"):
-
+        """
+            This method should NOT be used outside of version control purposes. Use the save() method instead.
+       
+            Saves variables of this object
+            Files saved are in the model's folder
+        """
         if model_name.strip() != "":
             self.vc_model_tag_data.model_name = model_name
         if parent_model_name.strip() != "":
@@ -80,19 +85,16 @@ class Vocab(object):
             self.vc_model_tag_data.commit_hash = commit_hash
         if git_repo_url.strip() != "":
             self.vc_model_tag_data.git_repo = git_repo_url
-
-        """ Saves variables of this object
-            Files saved are in the model's folder
-        """
+    
         with open(os.path.join(".", output_file_name), 'wb') as f:
             pickle.dump(self, f)
          
     @classmethod     
-    def load_model(self, model_name, input_file_name="vocab.dat"):
+    def load_model(self, model_full_tag_name, input_file_name="vocab.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-        data = system_utils.load_model_from_file(model_name, input_file_name)
+        data = system_utils.load_model_from_file(model_full_tag_name, input_file_name)
         if isinstance(data, dict):
             obj = Vocab()
             obj.__dict__ = data

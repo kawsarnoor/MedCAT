@@ -3,12 +3,10 @@ import os
 import sys
 import pickle
 import logging
-
-from numpy.core.numeric import full
 import medcat
 from .modeltagdata import ModelTagData
 
-def load_model_from_file(model_name="", file_name="", model_folder=".", bypass_model_path=False):
+def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False):
     """
         Looks into the models directory in your /site-packages/medcat-{version}/model_name/ installation.
         - bypass_model_path = will look into specified folder
@@ -16,25 +14,40 @@ def load_model_from_file(model_name="", file_name="", model_folder=".", bypass_m
     full_file_path = os.path.join(model_folder, file_name)
 
     if bypass_model_path is False:
-        full_file_path = os.path.join(get_downloaded_local_model_folder(model_name), file_name)
+        full_file_path = os.path.join(get_downloaded_local_model_folder(full_model_tag_name), file_name)
 
     data = False
     with open(full_file_path, 'rb') as f:
         data = pickle.load(f)
 
+        version = ""
+        model_name=""
+        
+        if full_model_tag_name != "":
+            model_name, version = get_str_model_version(full_model_tag_name)
+
         try:
             if isinstance(data, dict) and "vc_model_tag_data" not in data.keys():
-                data["vc_model_tag_data"] = ModelTagData(model_name)
+                data["vc_model_tag_data"] = ModelTagData(model_name, version=version)
             elif not hasattr(data, "vc_model_tag_data"):
-                data.vc_model_tag_data = ModelTagData(model_name)
+                data.vc_model_tag_data = ModelTagData(model_name, version=version)
             elif not data.vc_model_tag_data.model_name:
                 data.vc_model_tag_data.model_name = model_name
+                data.vc_model_tag.data_version = version
                 
         except Exception as exception:
             logging.error("could not add vc_model_tag_data attribute to model data file")
             logging.error(repr(exception))
 
     return data
+
+def get_str_model_version(model_full_tag_name, delimiter='-'):
+    split_name_and_version = model_full_tag_name.split(delimiter)
+    model_name = split_name_and_version[0]
+    version = "1.0"
+    if len(split_name_and_version) > 1:
+        version = split_name_and_version[1]
+    return model_name, version
 
 def get_auth_environemnt_vars():
     """
