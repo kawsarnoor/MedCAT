@@ -218,19 +218,19 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
         uploads_git_repo_base_url = "https://uploads.github.com/repos/" + user_repo_and_project
       
         model_name, parent_model_name, version = generate_model_name(repo, model_name, parent_model_name, version) 
-
+       
         if parent_model_name != "":
-            tag_name = str(model_name) + "-" + str(parent_model_name) + "-" + str(version)
+            release_name = str(model_name) + "-" + str(parent_model_name) + "-" + str(version)
         else:
-            tag_name = str(model_name) + "-" + str(version)
+            release_name = str(model_name) + "-" + str(version)
 
-        release_name = str(model_name) + "-" + str(version)    
+        tag_name =  str(model_name) + "-" + str(parent_model_name) + "-" + str(version)   
 
         # fetch all tags
         subprocess.run(["git", "fetch", "--tags", "--force"], cwd=model_package_folder)   
 
         # attempt to generate new model_name and inject it into the model file data
-        # inject_tag_data_to_model_files(model_package_folder, model_name, parent_model_name, version, repo.head.commit, git_repo_url)
+        inject_tag_data_to_model_files(model_package_folder, model_name, parent_model_name, version, repo.head.commit, git_repo_url)
         
         
         # Update dvc repo files (if any) before checking for untracked files ( we need to regenerate dvc file hashes if there were changes)
@@ -283,7 +283,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                 repo.remotes.origin.push(new_tag)
 
                 tag_data = {
-                    "tag_name" : user_repo_and_project.split('/')[1] + "-" + tag_name,
+                    "tag_name" :  tag_name, # user_repo_and_project.split('/')[1] + "-" + tag_name
                     "name" : release_name,
                     "draft" : False,
                     "prerelease" : False,

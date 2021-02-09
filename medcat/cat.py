@@ -101,6 +101,7 @@ class CAT(object):
 
         # TODO Add meta-anns saving
 
+    @classmethod
     def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
@@ -108,14 +109,12 @@ class CAT(object):
         vocab = Vocab.load_model(model_full_tag_name, vocab_input_file_name)
         cdb = CDB.load_model(model_full_tag_name, cdb_input_file_name)
 
-        if vocab:
-            self.vocab = vocab
-        else:
+        if vocab is False:
             print("Could not load vocabulary from model:", model_full_tag_name)
-        if cdb:
-            self.cdb = cdb
-        else:
+        if cdb is False:
             print("Could not load concept database from model:", model_full_tag_name)
+        
+        return CAT(cdb, vocab=vocab)
 
     def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=None, anneal=None, spacy_doc=None):
         if spacy_doc is None:
