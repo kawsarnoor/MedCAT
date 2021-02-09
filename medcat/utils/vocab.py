@@ -72,13 +72,13 @@ class Vocab(object):
 
         if model_name.strip() != "":
             self.vc_model_tag_data.model_name = model_name
-        if parent_model_name.strip():
+        if parent_model_name.strip() != "":
             self.vc_model_tag_data.parent_model_name = parent_model_name
-        if model_version_number.strip():
+        if model_version_number.strip() != "":
             self.vc_model_tag_data.version = model_version_number
-        if commit_hash.strip():
+        if commit_hash.strip() != "":
             self.vc_model_tag_data.commit_hash = commit_hash
-        if git_repo_url.strip():
+        if git_repo_url.strip() != "":
             self.vc_model_tag_data.git_repo = git_repo_url
 
         """ Saves variables of this object

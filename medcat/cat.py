@@ -95,6 +95,10 @@ class CAT(object):
         '''
         return self.nlp(text)
 
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat"):
+        self.vocab.save_model(model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, vocab_output_file_name)
+        self.cdb.save_model(model_name, parent_model_name, model_version_number, commit_hash, git_repo_url, cdb_output_file_name)
+
     def load_model(self, model_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat"):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
