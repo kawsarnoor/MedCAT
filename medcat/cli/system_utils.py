@@ -3,13 +3,22 @@ import os
 import sys
 import pickle
 import logging
+
+from numpy.core.numeric import full
 import medcat
 from .modeltagdata import ModelTagData
 
-def load_model_from_file(model_name, output_file_name):
-    full_file_path = os.path.join(get_downloaded_local_model_folder(model_name), output_file_name)
-    data = False
+def load_model_from_file(model_name="", file_name="", model_folder=".", bypass_model_path=False):
+    """
+        Looks into the models directory in your /site-packages/medcat-{version}/model_name/ installation.
+        - bypass_model_path = will look into specified folder
+    """
+    full_file_path = os.path.join(model_folder, file_name)
 
+    if bypass_model_path is False:
+        full_file_path = os.path.join(get_downloaded_local_model_folder(model_name), file_name)
+
+    data = False
     with open(full_file_path, 'rb') as f:
         data = pickle.load(f)
 
