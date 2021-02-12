@@ -148,8 +148,6 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
     #    if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
     #        shutil.rmtree(new_model_package_folder, ignore_errors=True)
 
-    create_model_folder(tag_name)
-
     if previous_tag_model_data != False:
         tmp_old_full_model_tag_name = previous_tag_model_data.model_name + "-" + str(previous_tag_model_data.version)
         print("Creating new folder for the release... checking out from tag: " + tmp_old_full_model_tag_name )
