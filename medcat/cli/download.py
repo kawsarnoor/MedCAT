@@ -128,7 +128,7 @@ def download(full_model_tag_name):
                     matching_tag_names.append(tag_name)
         
             if matching_tag_names:
-                print("Found the following tags with a similar name :")
+                print("Found the following tags with a similar name:")
                 print(matching_tag_names)
                 while True:
                     model_choice = input("Please input the model version you would like to download: \n")
