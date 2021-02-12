@@ -131,7 +131,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
     # create folder for new model release
     # folder where the original model files are: /lib/python/site-packages/medcat-{version}/models/...
     new_model_package_folder = os.path.join(get_local_model_storage_path(), tag_name)
-
+    
     if get_downloaded_local_model_folder(tag_name):
         #if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
         shutil.rmtree(new_model_package_folder, ignore_errors=True)
@@ -143,6 +143,13 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
 
     #if result["request_success"]:
     #    create_new_base_repository(new_model_package_folder, git_repo_url, checkout_full_tag_name=tag_name)
+
+    #if get_downloaded_local_model_folder(tag_name):
+    #    if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
+    #        shutil.rmtree(new_model_package_folder, ignore_errors=True)
+
+    create_model_folder(tag_name)
+
     if previous_tag_model_data != False:
         tmp_old_full_model_tag_name = previous_tag_model_data.model_name + "-" + str(previous_tag_model_data.version)
         print("Creating new folder for the release... checking out from tag: " + tmp_old_full_model_tag_name )
