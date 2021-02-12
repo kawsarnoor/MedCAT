@@ -89,8 +89,8 @@ def create_model_folder(full_model_tag_name):
     try:
         os.makedirs(os.path.join(get_local_model_storage_path(),full_model_tag_name))
     except Exception as exception:
-        logging.error("Could not create model folder " + full_model_tag_name + ".")
-        logging.error("" + repr(exception))
+        logging.info("Could not create model folder " + full_model_tag_name + ".")
+        logging.info("" + repr(exception))
 
 def get_downloaded_local_model_folder(full_model_tag_name):
     """
