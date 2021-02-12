@@ -51,7 +51,7 @@ def get_str_model_version(model_full_tag_name, delimiter='-'):
         version = split_name_and_version[1]
     return model_name, version
 
-def get_auth_environemnt_vars():
+def get_auth_environment_vars():
     """
         returns a dict with the github username and git access token
     """

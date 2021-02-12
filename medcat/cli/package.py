@@ -40,28 +40,36 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
     """
     """
     if previous_model_tag_data is not False:
-        #print("The new model was built on the top of the following model: " + str(previous_model_tag_data))
+        print("The model you want to package is based on the following model:" + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
         if model_name == "":
             model_name = previous_model_tag_data.model_name
 
     is_new_release = False
 
     if model_name != "":
-        if previous_model_tag_data != False and model_name == previous_model_tag_data.model_name:
-            print("The model you want to package is based on the following model:" + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
-            if prompt_statement("\n Do you want to update the tag number of an existing model ? (improvement of model)  e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " 
-             + "\033[1m" + model_name + "-" + predicted_version + "\033[0m" ) is False:
-                if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> "+ "<new_model_name>" + "-1.0" + "\033[0m" ):
-                    model_name = input("Give the model tag a name, the version will be 1.0 by default:")
-                    is_new_release = True
+        while True:
+            if previous_model_tag_data != False and model_name == previous_model_tag_data.model_name:
+                if prompt_statement("\n Do you want to update the tag number of an existing model ? (improvement of model)  e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " 
+                + "\033[1m" + model_name + "-" + predicted_version + "\033[0m" ) is False:
+                    if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " + "\033[1m" + "<new_model_name>-1.0" + "\033[0m" ):
+                        model_name = input("Give the model tag a name, the version will be 1.0 by default:")
+                        is_new_release = True
+                break
 
-        elif previous_model_tag_data != False and model_name != previous_model_tag_data.model_name:
-            print("New model release derived... previous tag was : " + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + " "  )
-            if prompt_statement("Should the provided NEW model name : " + "\033[1m" + model_name  + "\033[0m" + " , be used ? the version will be 1.0 by default"):
-                print("Using "  + "\033[1m" + model_name  + "\033[0m" + " as the new model name.")
+            elif previous_model_tag_data != False and model_name != previous_model_tag_data.model_name:
+                if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> "+ "\033[1m" + model_name + "-1.0" + "\033[0m" ):
+                    print("Using "  + "\033[1m" + model_name  + "\033[0m" + " as the new model name.")
+                else:
+                    model_name = input("Give the model tag a name, the version will be 1.0 by default:")
+                    break
+                is_new_release = True
             else:
-                model_name = input("Give the model tag a name, the version will be 1.0 by default:")
-            is_new_release = True
+                is_new_release = True
+                if prompt_statement("This is a new model release (version will be set to 1.0 by default), are you satisified with the name ? given name : " + "\033[1m" + model_name + "\033[0m" + " . The tag will be :" + "\033[1m" + model_name + "-1.0" +  "\033[0m"  ):
+                    print("Using "  + "\033[1m" + model_name  + "\033[0m" + " as the new model name.")
+                else:
+                    model_name = input("Give the model tag a name, the version will be 1.0 by default:")
+                    break
         
         if model_name != "":
             return model_name, is_new_release
@@ -124,8 +132,9 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
     # folder where the original model files are: /lib/python/site-packages/medcat-{version}/models/...
     new_model_package_folder = os.path.join(get_local_model_storage_path(), tag_name)
 
-    if get_downloaded_local_model_folder(tag_name):
-        shutil.rmtree(new_model_package_folder, ignore_errors=True)
+    #if get_downloaded_local_model_folder(tag_name):
+    #    if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
+    #        shutil.rmtree(new_model_package_folder, ignore_errors=True)
 
     create_model_folder(tag_name)
 
@@ -244,7 +253,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                     "draft" : False,
                     "prerelease" : False,
                     "target_commitish" : repo.head.commit.hexsha,
-                    "body" : generate_model_card_info(repo, model_name, parent_model_name, new_model_package_folder, version, tag_name)
+                    "body" : generate_model_card_info(git_repo_url, model_name, parent_model_name, new_model_package_folder, version, tag_name, parent_model_tag)
                 }
 
                 create_tag_request = requests.post(url=git_api_repo_base_url + "/releases", data=json.dumps(tag_data), headers=headers)
@@ -309,14 +318,15 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
         if bundle_file_path != "":
             os.remove(bundle_file_path)
     
-def generate_model_card_info(repo, model_name, parent_model_name, model_folder_path, version="", tag_name=""):
+def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_folder_path, version="", tag_name="", parent_model_tag_name=""):
     model_card = ""
+
+    parent_model_tag_url = git_repo_url[:-4] + "/releases/tag/" + parent_model_tag_name if str(git_repo_url).endswith(".git") else ""
+    parent_model_tag_url = "<a href="+ parent_model_tag_url + ">" + parent_model_tag_name + "</a>"
 
     if parent_model_name == "":
         parent_model_name = "N/A"
-
-    parent_model_tag_url = repo.remotes.origin.url[:-4] + "/releases/tag/" + tag_name if str(repo.remotes.origin.url).endswith(".git") else ""
-    parent_model_tag_url = "<a href="+ parent_model_tag_url + ">" + parent_model_tag_url + "</a>"
+        parent_model_tag_url = ""
 
     model_card_path = os.path.join(model_folder_path, "modelcard.md")
 
@@ -326,7 +336,7 @@ def generate_model_card_info(repo, model_name, parent_model_name, model_folder_p
         model_card = model_card.replace("<model_name>-<parent_model_name>-<model_version>", tag_name)
         model_card = model_card.replace("<model_name>", model_name)
         model_card = model_card.replace("<parent_model_name>", parent_model_name)
-        #model_card = model_card.replace("<parent_model_tag>", parent_model_tag_url)
+        model_card = model_card.replace("<parent_model_tag>", parent_model_tag_url)
         model_card = model_card.replace("<model_version>", version)
     else:
         print("Could not find model card file that holds a brief summary of the model data & specs.")
@@ -378,8 +388,8 @@ def package(model_name="", parent_model_name="", version="auto"):
     # git config credential.helper 'cache --timeout=300'
 
     #subprocess.run(["git", "config", "credential.helper", "'cache --timeout=400'"])
-    env_git_auth_token = get_auth_environemnt_vars()["git_auth_token"]
-    env_git_repo_url = get_auth_environemnt_vars()["git_repo_url"]
+    env_git_auth_token = get_auth_environment_vars()["git_auth_token"]
+    env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
 
     upload_model(model_name, parent_model_name=parent_model_name, version=version, git_auth_token=env_git_auth_token, git_repo_url=env_git_repo_url)
 

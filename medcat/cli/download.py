@@ -97,8 +97,8 @@ def unpack_asset(full_model_tag_name, git_repo_url, remote_name="origin", branch
 
 def download(full_model_tag_name):
 
-    env_git_auth_token = get_auth_environemnt_vars()["git_auth_token"]
-    env_git_repo_url = get_auth_environemnt_vars()["git_repo_url"]
+    env_git_auth_token = get_auth_environment_vars()["git_auth_token"]
+    env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
     
     headers = {"Accept" : "application/vnd.github.v3+json", "Authorization": "token " + env_git_auth_token}
     
