@@ -99,8 +99,6 @@ class CAT(object):
         self.vocab.save_model(output_file_name=vocab_output_file_name)
         self.cdb.save_model(output_file_name=cdb_output_file_name)
 
-        # TODO Add meta-anns saving
-
     @classmethod
     def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat"):
         """ Loads variables of this object

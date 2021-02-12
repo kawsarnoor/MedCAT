@@ -405,10 +405,10 @@ class CDB(object):
         with open(path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
-    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_file_name="cdb.dat"):
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_save_path=".",  output_file_name="cdb.dat"):
         """
             This method should NOT be used outside of version control purposes. Use the save() method instead.
-       
+        
             Saves variables of this object
             Files saved are in the model's folder
         """
@@ -423,7 +423,7 @@ class CDB(object):
         if git_repo_url.strip() != "":
             self.vc_model_tag_data.git_repo = git_repo_url
 
-        with open(os.path.join(".", output_file_name), 'wb') as f:
+        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
             pickle.dump(self, f)
          
     @classmethod     

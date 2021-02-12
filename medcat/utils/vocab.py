@@ -20,13 +20,11 @@ class Vocab(object):
         else:
             self.inc_wc(word)
 
-
     def remove_all_vectors(self):
         self.vec_index2word = {}
 
         for word in self.vocab:
             self.vocab[word]['vec'] = None
-
 
     def remove_words_below_cnt(self, cnt):
         print("Words before removal: " + str(len(self.vocab)))
@@ -45,7 +43,6 @@ class Vocab(object):
 
             if self.vocab[word]['vec'] is not None:
                 self.vec_index2word[ind] = word
-
 
     def inc_wc(self, word):
         self.item(word)['cnt'] += 1
@@ -68,7 +65,7 @@ class Vocab(object):
             if token in self:
                 self.vocab[token]['cnt'] += 1
 
-    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_file_name="vocab.dat"):
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", parent_model_tag="", output_save_path=".",  output_file_name="vocab.dat"):
         """
             This method should NOT be used outside of version control purposes. Use the save() method instead.
        
@@ -85,8 +82,10 @@ class Vocab(object):
             self.vc_model_tag_data.commit_hash = commit_hash
         if git_repo_url.strip() != "":
             self.vc_model_tag_data.git_repo = git_repo_url
+        if parent_model_tag.strip() != "":
+            self.vc_model_tag_data.parent_model_tag = parent_model_tag
     
-        with open(os.path.join(".", output_file_name), 'wb') as f:
+        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
             pickle.dump(self, f)
          
     @classmethod     

@@ -1,3 +1,5 @@
+import shutil
+import subprocess
 import git
 import os
 import sys
@@ -21,7 +23,7 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
         data = pickle.load(f)
 
         version = ""
-        model_name=""
+        model_name = ""
         
         if full_model_tag_name != "":
             model_name, version = get_str_model_version(full_model_tag_name)
@@ -83,16 +85,26 @@ def prompt_statement(prompt_text, answer="yes"):
             if choice in exit_answer:
                 sys.exit()
 
-def get_downloaded_local_model_folder(model_name):
+def create_model_folder(full_model_tag_name):
     try:
-        full_model_path = os.path.join(get_local_model_storage_path(), model_name)
+        os.makedirs(os.path.join(get_local_model_storage_path(),full_model_tag_name))
+    except Exception as exception:
+        logging.error("Could not create model folder " + full_model_tag_name + ".")
+        logging.error("" + repr(exception))
+
+def get_downloaded_local_model_folder(full_model_tag_name):
+    """
+        Check if folder for model exists and it is a GIT repository.
+        Returns empty if either of conditions fail.
+    """
+    try:
+        full_model_path = os.path.join(get_local_model_storage_path(), full_model_tag_name)
         if os.path.isdir(full_model_path):
             if is_dir_git_repository(full_model_path):
                 return full_model_path
-        return ""
+        return False
     except Exception as exception:
-        logging.error("Could not find model folder " + model_name + ".")
-        
+        logging.error("Could not find model folder " + full_model_tag_name + ".")
 
 def get_local_model_storage_path(storage_path=os.path.dirname(medcat.__file__), models_dir="models"):
     
@@ -110,6 +122,40 @@ def get_local_model_storage_path(storage_path=os.path.dirname(medcat.__file__), 
         return medcat_model_installation_dir_path
 
     return ""
+    
+def copy_model_files_to_folder(source_folder, dest_folder):
+
+    root, subdirs, files = next(os.walk(source_folder))
+
+    for file_name in files:
+        if file_name in get_permitted_push_file_list():
+            logging.info("Copying file : " + file_name + " to " + dest_folder)
+            shutil.copy2(os.path.join(source_folder, file_name), dest_folder)
+        else:
+            logging.info("Discarding " + file_name + " as it is not in the permitted model file pushing convention...")
+
+def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="origin", branch="master", checkout_full_tag_name=""):
+    """
+        Creates a base repository for a NEW base model release. 
+        The base repo always points to the HEAD commit of the git history, not to a tag/release commit.
+
+        :checkout_full_tag_name : should be used in the case of creating/updating from already existing model release/tag 
+    """
+
+    try:
+        subprocess.run(["git", "init"], cwd=repo_folder_path)
+        subprocess.run(["git", "remote", "add", remote_name, git_repo_url], cwd=repo_folder_path)
+       
+        if checkout_full_tag_name != "":
+             subprocess.run(["git", "fetch", "--tags", "--force"], cwd=repo_folder_path)
+             subprocess.run(["git", "checkout", "tags/" + checkout_full_tag_name, "-b" , branch], cwd=repo_folder_path)
+
+        subprocess.run(["git", "pull", remote_name, branch], cwd=repo_folder_path)
+
+
+    except Exception as exception:
+        logging.error("Error creating base model repository: " + repr(exception))
+        sys.exit()
 
 def is_dir_git_repository(path):
     try:
@@ -118,6 +164,12 @@ def is_dir_git_repository(path):
     except git.exc.InvalidGitRepositoryError as exception:
         logging.error("Folder:" + path + " is not a git repository. Description:" + repr(exception))
         return False
+
+def sanitize_input():
+    pass
+
+def get_file_ext_to_ignore():
+    return ["*.dat"]
 
 def get_permitted_push_file_list():
     return ["cdb.dat", "vocab.dat", "modelcard.md", "modelcard.json"]

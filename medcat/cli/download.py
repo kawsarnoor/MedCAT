@@ -8,9 +8,9 @@ import logging
 from .system_utils import *
 
 
-def get_matching_version(model_name, request_url, headers):
+def get_matching_version(full_model_tag_name, request_url, headers):
 
-    request_url = request_url + 'releases/tags/' + model_name
+    request_url = request_url + 'releases/tags/' + full_model_tag_name
     response = requests.get(request_url, headers=headers)
 
     asset_extension = ".bundle"
@@ -19,7 +19,7 @@ def get_matching_version(model_name, request_url, headers):
     if response.status_code == 200:
         result['request_success'] = True
         for asset in response.json()['assets']:
-            if asset['name'] == str(model_name + asset_extension):   
+            if asset['name'] == str(full_model_tag_name + asset_extension):   
                 result['tag_asset_id'] = str(asset['id'])
     if response.status_code == 404:
         result['response_message'] = response.json()['message']
@@ -29,7 +29,7 @@ def get_matching_version(model_name, request_url, headers):
 
     return result
 
-def download_asset(model_name, request_url, asset_id, headers):
+def download_asset(full_model_tag_name, request_url, asset_id, headers):
 
     download_headers = headers
     download_headers["Accept"] = "application/octet-stream"
@@ -42,7 +42,7 @@ def download_asset(model_name, request_url, asset_id, headers):
         model_asset_file_and_folder_location = get_local_model_storage_path()
 
         if model_asset_file_and_folder_location != "":
-            model_asset_location = os.path.join(model_asset_file_and_folder_location, model_name)
+            model_asset_location = os.path.join(model_asset_file_and_folder_location, full_model_tag_name)
             with open(model_asset_location + asset_extension, 'wb') as f:
                f.write(downloaded_tag_bundle_file.content)
                print("Downloaded model package file to : ", model_asset_location + asset_extension)
@@ -66,18 +66,17 @@ def get_all_available_model_tags(request_url, headers):
 
     return model_tag_names
 
-
-def unpack_asset(model_name, git_repo_url, remote_name="origin", branch="master"):
+def unpack_asset(full_model_tag_name, git_repo_url, remote_name="origin", branch="master"):
 
     asset_extension = ".bundle"
     try:
         model_storage_path = get_local_model_storage_path()
         if model_storage_path != "":
-            model_asset_dir_location = os.path.join(model_storage_path, model_name)
+            model_asset_dir_location = os.path.join(model_storage_path, full_model_tag_name)
             model_asset_bundle_file = model_asset_dir_location + asset_extension
 
             if os.path.exists(model_asset_dir_location) and os.path.isdir(model_asset_dir_location):
-                print("Found previous installation of model:" + model_name, " in path:", model_asset_dir_location, ", deleting folder ...")
+                print("Found previous installation of model:" + full_model_tag_name, " in path:", model_asset_dir_location, ", deleting folder ...")
                 if prompt_statement("Should this installation be deleted and reinstalled ?"):
                     shutil.rmtree(model_asset_dir_location, ignore_errors=True)
                     subprocess.run(["git", "clone", model_asset_bundle_file], cwd=model_storage_path)  
@@ -96,12 +95,11 @@ def unpack_asset(model_name, git_repo_url, remote_name="origin", branch="master"
     except Exception as exception:
         logging.error("Error unpacking model file asset : " + repr(exception))
 
-def download(model_name):
+def download(full_model_tag_name):
 
     env_git_auth_token = get_auth_environemnt_vars()["git_auth_token"]
     env_git_repo_url = get_auth_environemnt_vars()["git_repo_url"]
     
-    # Headers
     headers = {"Accept" : "application/vnd.github.v3+json", "Authorization": "token " + env_git_auth_token}
     
     git_repo_url = env_git_repo_url
@@ -111,22 +109,22 @@ def download(model_name):
     request_url = 'https://api.github.com/repos/' + user_repo_and_project + "/"
 
     # Try to get exact match:
-    result = get_matching_version(model_name, request_url, headers)
+    result = get_matching_version(full_model_tag_name, request_url, headers)
 
     if result["request_success"]:
-        print("Found release ", model_name, ". Downloading...")
+        print("Found release ", full_model_tag_name, ". Downloading...")
         if result["tag_asset_id"]:
-          download_asset(model_name, request_url, asset_id=result["tag_asset_id"], headers=headers)
-          unpack_asset(model_name, git_repo_url)
+          download_asset(full_model_tag_name, request_url, asset_id=result["tag_asset_id"], headers=headers)
+          unpack_asset(full_model_tag_name, git_repo_url)
         else:
-            print("Release tag " + model_name + " asset id not found, please retry...")
+            print("Release tag " + full_model_tag_name + " asset id not found, please retry...")
     else:
         available_model_release_tag_names = get_all_available_model_tags(request_url=request_url, headers=headers)
        
         if available_model_release_tag_names:
             matching_tag_names = []
             for tag_name in available_model_release_tag_names:
-                if model_name in tag_name:
+                if full_model_tag_name in tag_name:
                     matching_tag_names.append(tag_name)
         
             if matching_tag_names:
