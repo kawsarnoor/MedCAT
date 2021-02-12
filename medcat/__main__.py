@@ -1,11 +1,12 @@
 if __name__ == "__main__":
-    from medcat.cli import package, download
+    from medcat.cli import package, download, listmodels
     import plac
     import sys
 
     commands = {
         "download" : download,
-        "package" : package
+        "package" : package,
+        "listmodels" : listmodels
     }
 
     if len(sys.argv) == 1:

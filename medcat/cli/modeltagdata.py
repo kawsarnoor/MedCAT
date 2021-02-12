@@ -7,3 +7,5 @@ class ModelTagData:
     version: str = ""
     commit_hash: str = ""
     git_repo: str = ""
+    parent_model_tag: str = ""
+    storage_location: str = ""

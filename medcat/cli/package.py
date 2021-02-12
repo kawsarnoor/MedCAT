@@ -5,121 +5,98 @@ import os
 import json
 import subprocess
 import logging
-import site
 import shutil
-import git
+import dvc
 from git import Repo
-from functools import reduce
-from requests.api import head
 from .download import get_all_available_model_tags
 from .system_utils import *
 from .modeltagdata import ModelTagData
 
+logging.basicConfig(level=logging.INFO)
 
-"""
-TO DO : INSTITUTION_NAME-MODEL_NAME-version1.0
+def verify_model_package(request_url, headers, full_model_tag_name, git_auth_token):
 
-PARENT MODEL SHOULD NOT APPEAR IN THE MODEL TAGS
-IT SHOULD APPEAR IN THE CARD ONLY NAME
+    available_model_tags = get_all_available_model_tags(request_url, headers)
+    found_matching_tags = [tag_name for tag_name in available_model_tags if full_model_tag_name in tag_name] 
 
-"""
+    found_model_folders = []
+    root, subdirs, files = next(os.walk(get_local_model_storage_path()))
 
-def select_model_packaging_folder(request_url, headers, model_name, git_auth_token):
+    for subdir in subdirs:
+        if subdir in available_model_tags:
+            found_model_folders.append(subdir)
+
+    found_matching_folders = [dir_name for dir_name in found_model_folders if full_model_tag_name in dir_name] 
+
+    if not found_matching_folders and found_matching_tags:
+        print("NO model named " + "\033[1m" + full_model_tag_name + "\033[0m" + " found on this machine, please download it...")
+        #subprocess.run([sys.executable, "-m", "medcat", "download", str(full_model_tag_name), git_auth_token],
+        #                cwd=get_local_model_storage_path())
+        return True
+
+    return False
+
+def select_model_package_and_name(model_name, previous_model_tag_data=False, predicted_version="1.0"):
+    """
+    """
+    if previous_model_tag_data is not False:
+        print("The model you want to package is based on the following model:" + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
+        if model_name == "":
+            model_name = previous_model_tag_data.model_name
+
+    is_new_release = False
 
     if model_name != "":
-        available_model_tags = get_all_available_model_tags(request_url, headers)
-        found_matching_tags = [tag_name for tag_name in available_model_tags if model_name in tag_name] 
+        while True:
+            if previous_model_tag_data != False and model_name == previous_model_tag_data.model_name:
+                if prompt_statement("\n Do you want to update the tag number of an existing model ? (improvement of model)  e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " 
+                + "\033[1m" + model_name + "-" + predicted_version + "\033[0m" ) is False:
+                    if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " + "\033[1m" + "<new_model_name>-1.0" + "\033[0m" ):
+                        model_name = input("Give the model tag a name, the version will be 1.0 by default:")
+                        is_new_release = True
+                break
 
-        found_model_folders = []
-        root, subdirs, files = next(os.walk(get_local_model_storage_path()))
-
-        for subdir in subdirs:
-            if subdir in available_model_tags:
-                found_model_folders.append(subdir)
-
-        found_matching_folders = [dir_name for dir_name in found_model_folders if model_name in dir_name] 
-
-        version_choice = ""
-
-        # to add the automatic option once model loading has the extra provenance fields
-        
-        if prompt_statement("Is this a new model release ?"):  # if model.provenance_model != "" && no tags with model name exist:
-            if prompt_statement("Should the model_name : " + "\033[1m" + model_name + "\033[0m"  + " be used ? the version will be 1.0 by default, another name can be provided by answering NO."):
-                version_choice = model_name
+            elif previous_model_tag_data != False and model_name != previous_model_tag_data.model_name:
+                if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> "+ "\033[1m" + model_name + "-1.0" + "\033[0m" ):
+                    print("Using "  + "\033[1m" + model_name  + "\033[0m" + " as the new model name.")
+                else:
+                    model_name = input("Give the model tag a name, the version will be 1.0 by default:")
+                    break
+                is_new_release = True
             else:
-                version_choice = input("give the model release a name, the version will be 1.0 by default:")
-            version_choice = version_choice + "-1.0"
-            #if prompt_statement("Are you certain that " + '\033[1m' +  version_choice + '\033[0m'  + " is correct ? this process is irreversible, please double-check."):
-
-        elif found_matching_folders:
-            print("Found the following model folders matching the name given:", found_matching_folders)
-            version_choice = input("Please input what folder to use for packaging : ")
-
-        elif not found_matching_folders and found_matching_tags:
-            print("No models detected on the machine, however, there are available releases matching the tag name: ", found_matching_tags)
-            version_choice = input("Please input the model_name-version:")
-            subprocess.run([sys.executable, "-m", "medcat", "download", str(version_choice), git_auth_token],
-                           cwd=get_local_model_storage_path())
+                is_new_release = True
+                if prompt_statement("This is a new model release (version will be set to 1.0 by default), are you satisified with the name ? given name : " + "\033[1m" + model_name + "\033[0m" + " . The tag will be :" + "\033[1m" + model_name + "-1.0" +  "\033[0m"  ):
+                    print("Using "  + "\033[1m" + model_name  + "\033[0m" + " as the new model name.")
+                else:
+                    model_name = input("Give the model tag a name, the version will be 1.0 by default:")
+                    break
         
-        elif not found_matching_folders and available_model_tags:
-            print("No models detected on the machine, however, there are other releases available for download: ", available_model_tags)
-            version_choice = input("Please input the model_name-version:")
-            subprocess.run([sys.executable, "-m", "medcat", "download", str(version_choice), git_auth_token],
-                           cwd=get_local_model_storage_path())
+        if model_name != "":
+            return model_name, is_new_release
+        
+    logging.error("No model name has been provided, and the models detected in the current folder have no model tag data history...")
+    logging.error("Please re-run the command and provide a name for the model as a parameter: python3 -m medcat package [model_name]")
+    logging.error("Exiting...")
+    sys.exit()
 
-        elif not version_choice or not available_model_tags:
-            logging.error("Model name not provided or no model tags found for download, exitting")
-            sys.exit()
-      
-        return os.path.join(get_local_model_storage_path(), version_choice)
-
-    elif os.path.isdir(os.path.join(get_local_model_storage_path(), model_name)):
-        return os.path.join(get_local_model_storage_path(), model_name)
-
-def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="origin", branch="master"):
-    """
-        Creates a base repository for a NEW base model release. 
-        The base repo always points to the HEAD commit of the git history, not to a tag/release commit.
-    """
-
-    try:
-        subprocess.run(["git", "init"], cwd=repo_folder_path)
-        subprocess.run(["git", "remote", "add", remote_name, git_repo_url], cwd=repo_folder_path)
-        subprocess.run(["git", "pull", remote_name, branch], cwd=repo_folder_path)
-
-    except Exception as exception:
-        logging.error("Error creating base model repository: " + repr(exception))
-        sys.exit()
-
-
-def copy_model_files_to_folder(source_folder, dest_folder):
-
-    root, subdirs, files = next(os.walk(source_folder))
-
-    for file_name in files:
-        if file_name in get_permitted_push_file_list():
-            print("Copying file : " + file_name, " to ", dest_folder)
-            shutil.copy2(os.path.join(source_folder, file_name), dest_folder)
-        else:
-            print("Discarding " + file_name + " as it is not in the permitted model file naming convention...")
-    print("\n")
-
-def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_name, version, commit_hash, git_repo_url):
+def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_name, version, commit_hash, git_repo_url, parent_model_tag):
     for file_name in get_permitted_push_file_list(): 
         if ".dat" in file_name and os.path.isfile(os.path.join(model_folder_path, file_name)):
             loaded_model_file = load_model_from_file(model_folder_path, file_name)
-            print("==============")
-            if loaded_model_file["vc_model_tag_data"]:
-                print(loaded_model_file["vc_model_tag_data"])
-                #loaded_model_file["vc_model_tag_data"].model_name = model_name
-                #loaded_model_file["vc_model_tag_data"].parent_model_name = parent_model_name
-                #loaded_model_file["vc_model_tag_data"].version = version
-                #loaded_model_file["vc_model_tag_data"].commit_hash = commit_hash
-                #loaded_model_file["vc_model_tag_data"].git_repo_url = git_repo_url
-                print(loaded_model_file.vc_model_tag_data)
-            
-            #loaded_model_file.save_model(model_folder_path, file_name)
+            if hasattr(loaded_model_file, "vc_model_tag_data"):
+                loaded_model_file.vc_model_tag_data = ModelTagData(model_name, parent_model_name, version,
+                                                                   commit_hash, git_repo_url, parent_model_tag)
+                logging.info("Updating model object : " + model_name +"-"+ version + " " + file_name + " with tag data...")
+                loaded_model_file.save_model(output_save_path=model_folder_path)
+                logging.info("Complete..")
 
+def detect_model_name_from_files(model_folder_path="."):
+    for file_name in get_permitted_push_file_list(): 
+        if ".dat" in file_name and os.path.isfile(os.path.join(model_folder_path, file_name)):
+            loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
+            if hasattr(loaded_model_file, "vc_model_tag_data"):
+                return loaded_model_file.vc_model_tag_data
+    return False
 
 def upload_model(model_name, parent_model_name, version, git_auth_token, git_repo_url):
     headers = {"Accept": "application/vnd.github.v3+json", "Authorization": "token " + git_auth_token}
@@ -128,66 +105,103 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
     user_repo_and_project = '/'.join(git_repo_url.split('.git')[0].split('/')[-2:]) 
     #user_repo_and_project = '/'.join(repo.remotes.origin.url.split('.git')[0].split('/')[-2:])
     
-    #git_repo_url = "https://github.com/" + user_repo_and_project + ".git"
     request_url = 'https://api.github.com/repos/' + user_repo_and_project + "/"
+    git_api_repo_base_url = "https://api.github.com/repos/" + user_repo_and_project
+    uploads_git_repo_base_url = "https://uploads.github.com/repos/" + user_repo_and_project
+      
+    # folder where we are now (where we called the package command)
+    current_folder = os.getcwd()
 
-    # folder where we are now
-    original_folder = os.getcwd()
+    # get information about the model files we currently want to package
+    previous_tag_model_data = detect_model_name_from_files()
 
-    # folder where the model files are: /lib/python/site-packages/medcat-{version}/models/...
-    current_dir = select_model_packaging_folder(request_url, headers, model_name, git_auth_token)
+    # this is the predicted version number, will change to 1.0 if its a new release
+    version = generate_model_version(request_url, headers, model_name, version, previous_tag_model_data) 
 
-    # if the folder is not a git repository it means that it is used for a new model base release
-    if current_dir != "":
-        if not os.path.exists(current_dir):
-           os.makedirs(current_dir)
-        if not is_dir_git_repository(current_dir):
-           version = "1.0"
-           create_new_base_repository(current_dir, git_repo_url)
-        
-    # copy files to model folder repo (inside site-packages)
-    copy_model_files_to_folder(original_folder, current_dir)
+    # determine the final model name
+    model_name, is_new_release = select_model_package_and_name(model_name, previous_tag_model_data, predicted_version=version)
 
-    tag_name = ""
+    # version reset if it's a new release
+    if is_new_release:
+        version = "1.0"
+
+    # need to add user/ institution name 
+    tag_name = model_name + "-" + version
+
+    # create folder for new model release
+    # folder where the original model files are: /lib/python/site-packages/medcat-{version}/models/...
+    new_model_package_folder = os.path.join(get_local_model_storage_path(), tag_name)
+
+    #if get_downloaded_local_model_folder(tag_name):
+    #    if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
+    #        shutil.rmtree(new_model_package_folder, ignore_errors=True)
+
+    create_model_folder(tag_name)
+
+    if previous_tag_model_data != False:
+        tmp_old_full_model_tag_name = previous_tag_model_data.model_name + "-" + str(previous_tag_model_data.version)
+        print("Creating new folder for the release... checking out from tag: " + tmp_old_full_model_tag_name )
+        create_new_base_repository(new_model_package_folder, git_repo_url, checkout_full_tag_name=tmp_old_full_model_tag_name)
+    else:
+        create_new_base_repository(new_model_package_folder, git_repo_url)
+    
     bundle_file_path = ""
     active_remote = ""
     
     try:
-        print("Current working dir: ", current_dir)
+        print("Current directory:", current_folder)
+        print("Current GIT working dir: ", new_model_package_folder)
         print("===================================================================")
         print("Git status:")
-        subprocess.run(["git", "status"], cwd=current_dir)
+        subprocess.run(["git", "status"], cwd=new_model_package_folder)
         print("===================================================================")
         print("DVC status:")
-        subprocess.run([sys.executable, "-m", "dvc","status"], cwd=current_dir)
+        subprocess.run([sys.executable, "-m", "dvc","status"], cwd=new_model_package_folder)
         print("===================================================================")
-
-        repo = Repo(current_dir, search_parent_directories=False)
-
-        git_api_repo_base_url = "https://api.github.com/repos/" + user_repo_and_project
-        uploads_git_repo_base_url = "https://uploads.github.com/repos/" + user_repo_and_project
-      
-        model_name, parent_model_name, version = generate_model_name(repo, model_name, parent_model_name, version) 
-
-        if parent_model_name != "":
-            tag_name = str(model_name) + "-" + str(parent_model_name) + "-" + str(version)
-        else:
-            tag_name = str(model_name) + "-" + str(version)
-
-        release_name = str(model_name) + "-" + str(version)    
-
+        
+        repo = Repo(new_model_package_folder, search_parent_directories=False)
+        
         # fetch all tags
-        subprocess.run(["git", "fetch", "--tags", "--force"], cwd=current_dir)   
+        subprocess.run(["git", "fetch", "--tags", "--force"], cwd=new_model_package_folder)
+        
+        active_branch = repo.active_branch
+        
+        copy_model_files_to_folder(current_folder, new_model_package_folder)
+        
+        ## TODO
+        ### check if this is now a parent:
+        parent_model_tag = ""
+        if previous_tag_model_data != False:
+            if model_name != previous_tag_model_data.model_name:
+                parent_model_name = previous_tag_model_data.model_name
+                parent_model_tag = previous_tag_model_data.model_name + "-" + previous_tag_model_data.version
+            else:
+                parent_model_name = previous_tag_model_data.parent_model_name
+            
+        if parent_model_name != "":
+            release_name = str(model_name) + "-" + str(parent_model_name) + "-" + str(version)
+        else:
+            release_name = str(model_name) + "-" + str(version)
 
         # attempt to generate new model_name and inject it into the model file data
-        # inject_tag_data_to_model_files(current_dir, model_name, parent_model_name, version, repo.head.commit, git_repo_url)
-        
+        # IMPORTANT: the commit points to the parent model or the last commit of the repository (non-tag) commit
         
         # Update dvc repo files (if any) before checking for untracked files ( we need to regenerate dvc file hashes if there were changes)
-        subprocess.run([sys.executable, "-m", "dvc", "commit"], cwd=current_dir) 
+        # We need to check the files before injecting new tag/release data into them, otherwise they will always be flagged as changed..
+        subprocess.run([sys.executable, "-m", "dvc", "commit"], cwd=new_model_package_folder, text=True)
 
-        active_branch = repo.active_branch
+        changed_files = [ item.a_path for item in repo.index.diff(None) ]
 
+        # if there have been changes on the file hashes since the previous commit, then, we can inject the new release data into the model files
+        if changed_files:
+            # TODO get storage location of files
+            inject_tag_data_to_model_files(new_model_package_folder, model_name, parent_model_name, version, str(repo.head.commit), git_repo_url, parent_model_tag)
+            subprocess.run([sys.executable, "-m", "dvc", "commit", "--force"], cwd=new_model_package_folder, text=True)
+            #process = subprocess.Popen([sys.executable, "-m", "dvc", "commit"], cwd=new_model_package_folder,  bufsize=0, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            #for line in iter(process.stdout.readline, ""):
+            #    process.stdin.write("y\n")
+            #subprocess.run([sys.executable, "-m", "dvc", "commit"], cwd=new_model_package_folder, input=b"y")
+        
         changed_files = [ item.a_path for item in repo.index.diff(None) ]
         untracked_files = repo.untracked_files
 
@@ -201,7 +215,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                     for file_name in untracked_files:
                         if prompt_statement("Add : " + file_name + " to the DVC repo ?"):      
                             if ".dvc" not in file_name and file_name not in repo.ignored(file_name):
-                                subprocess.run([sys.executable, "-m", "dvc","add", file_name], cwd=current_dir)
+                                subprocess.run([sys.executable, "-m", "dvc","add", file_name], cwd=new_model_package_folder)
                                 repo.git.add(file_name + ".dvc")
                             elif ".dvc" in file_name and file_name not in repo.ignored(file_name):
                                 repo.git.add(file_name)
@@ -210,10 +224,10 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                 else: 
                     for file_name in untracked_files:
                         if ".dvc" not in file_name and file_name not in repo.ignored(file_name):
-                            subprocess.run([sys.executable, "-m", "dvc","add", file_name], cwd=current_dir)
+                            subprocess.run([sys.executable, "-m", "dvc","add", file_name], cwd=new_model_package_folder)
                     repo.git.add(all=True)
 
-            for root, dirs, files in os.walk(current_dir):
+            for root, dirs, files in os.walk(new_model_package_folder):
                 if ".gitignore" in files:
                     repo.git.add(os.path.join(root, ".gitignore"))
 
@@ -227,18 +241,19 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
         if staged_files:
 
             if prompt_statement("Do you want to create the tag: " + tag_name + " and release " + release_name + "?" ):
-                repo.index.commit(release_name)
+                
+                repo.index.commit(tag_name)
                 new_tag = repo.create_tag(path=tag_name, ref=repo.head.commit.hexsha)
 
                 repo.remotes.origin.push(new_tag)
 
                 tag_data = {
-                    "tag_name" : tag_name,
+                    "tag_name" :  tag_name, # user_repo_and_project.split('/')[1] + "-" + tag_name
                     "name" : release_name,
                     "draft" : False,
                     "prerelease" : False,
                     "target_commitish" : repo.head.commit.hexsha,
-                    "body" : generate_model_card_info(repo, model_name, current_dir, parent_model_name, version, tag_name)
+                    "body" : generate_model_card_info(git_repo_url, model_name, parent_model_name, new_model_package_folder, version, tag_name, parent_model_tag)
                 }
 
                 create_tag_request = requests.post(url=git_api_repo_base_url + "/releases", data=json.dumps(tag_data), headers=headers)
@@ -246,14 +261,8 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                 if create_tag_request.status_code == 201:
                     print("Success, created release : " + release_name + ", with tag : " + tag_name + " .")
 
-                    subprocess.run(["git", "bundle", "create", str(tag_name) + ".bundle", "--all"], cwd=current_dir)
-                    bundle_file_path = current_dir + "/" + str(tag_name) + ".bundle"
-                        
-                    #if "nt" in os.name:
-                    #    subprocess.call(["tar.exe", "-af", str(tag_name) + ".zip", bundle_file_path ], cwd=current_dir)
-                    #else:
-                    #    subprocess.call(["zip", "-9 -y -q", str(tag_name) + ".zip", bundle_file_path ], cwd=current_dir)
-                    #subprocess.call(["tar", "-zf", str(tag_name) + ".tar.gz", bundle_file_path ], cwd=current_dir)
+                    subprocess.run(["git", "bundle", "create", str(tag_name) + ".bundle", "--all"], cwd=new_model_package_folder)
+                    bundle_file_path = new_model_package_folder + "/" + str(tag_name) + ".bundle"
 
                     req_release_data = requests.get(url=git_api_repo_base_url + "/releases/tags/" + str(tag_name), headers=headers)
 
@@ -283,47 +292,41 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
                 else:
                     raise Exception("Failed to create release : " + release_name + ", with tag : " + tag_name + " . \n" + "Reason:" + create_tag_request.text)
                 
-                subprocess.call([sys.executable, "-m", "dvc", "push"], cwd=current_dir)
+                subprocess.call([sys.executable, "-m", "dvc", "push"], cwd=new_model_package_folder)
                   
             else:
-                raise Exception("Process cancelled... reverting state...")
+                raise Exception("Could not push new model version")
         else:
             print("No changes to be submitted. Checking model files with storage server for potential update pushing....")
-            subprocess.run([sys.executable, "-m", "dvc", "push"], cwd=current_dir)
-      
+            subprocess.run([sys.executable, "-m", "dvc", "push"], cwd=new_model_package_folder)
+        
     except Exception as exception:
         """
             Resets the head commit to default previous one, it should happen in case of any error.
             If the tag has been already pushed then it will be deleted from the git repo.
         """
-        print("Process cancelled... reverting state...")
-      
-        subprocess.run(["git", "reset", "HEAD~"], cwd=current_dir)
-        if tag_name != "": 
-            print("Deleting tag ", tag_name)
-            #subprocess.run(["git", "push", "origin", "--delete", tag_name ], cwd=current_dir)
-            subprocess.run(["git", "tag", "--delete", tag_name ], cwd=current_dir)
-
-        logging.error("could not push new model version")
         logging.error("description: " + repr(exception))
-
-        #if current_dir != "":
-        #    shutil.rmtree(current_dir, ignore_errors=True)
-        #    os.rmdir(current_dir)
-    
+        logging.warning("Push process cancelled... reverting state...")
+       
+        #subprocess.run(["git", "reset", "HEAD~"], cwd=new_model_package_folder)
+        if tag_name != "": 
+            logging.warning("Deleting tag " + tag_name + " because the push operation has failed and changes were reverted.")
+            #subprocess.run(["git", "push", "origin", "--delete", tag_name ], cwd=new_model_package_folder)
+            subprocess.run(["git", "tag", "--delete", tag_name ], cwd=new_model_package_folder)
+       
     finally:
-        # delete the bundle file
         if bundle_file_path != "":
             os.remove(bundle_file_path)
-
-def generate_model_card_info(repo, model_name, model_folder_path, parent_model_name="", version="", tag_name=""):
+    
+def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_folder_path, version="", tag_name="", parent_model_tag_name=""):
     model_card = ""
+
+    parent_model_tag_url = git_repo_url[:-4] + "/releases/tag/" + parent_model_tag_name if str(git_repo_url).endswith(".git") else ""
+    parent_model_tag_url = "<a href="+ parent_model_tag_url + ">" + parent_model_tag_name + "</a>"
 
     if parent_model_name == "":
         parent_model_name = "N/A"
-
-    parent_model_tag_url = repo.remotes.origin.url[:-4] + "/releases/tag/" + tag_name if str(repo.remotes.origin.url).endswith(".git") else ""
-    parent_model_tag_url = "<a href="+ parent_model_tag_url + ">" + parent_model_tag_url + "</a>"
+        parent_model_tag_url = ""
 
     model_card_path = os.path.join(model_folder_path, "modelcard.md")
 
@@ -333,7 +336,7 @@ def generate_model_card_info(repo, model_name, model_folder_path, parent_model_n
         model_card = model_card.replace("<model_name>-<parent_model_name>-<model_version>", tag_name)
         model_card = model_card.replace("<model_name>", model_name)
         model_card = model_card.replace("<parent_model_name>", parent_model_name)
-        #model_card = model_card.replace("<parent_model_tag>", parent_model_tag_url)
+        model_card = model_card.replace("<parent_model_tag>", parent_model_tag_url)
         model_card = model_card.replace("<model_version>", version)
     else:
         print("Could not find model card file that holds a brief summary of the model data & specs.")
@@ -341,81 +344,31 @@ def generate_model_card_info(repo, model_name, model_folder_path, parent_model_n
     return model_card
 
 
-def generate_model_name(repo, model_name, parent_model_name, version):
+def generate_model_version(request_url, headers, model_name, version, previous_model_tag_data=False):
+
     try:
-        tags = repo.tags
+        tags = get_all_available_model_tags(request_url, headers)
 
         if tags:
-            current_tag = next((tag for tag in tags if tag.commit == repo.head.commit), None)
+            similar_tag_names = [tag for tag in tags if model_name in str(tag)]
+            
+            similar_tags = []
 
-            found_model_tags = [tag for tag in tags if model_name in str(tag.path)]
+            #for tag_name in similar_tag_names:
+            #    tag_split = tag_name.split('-', 2)
+            #    
+            #    if len(tag_split > 2):
+            #        similar_tags.append(ModelTagData(model_name=tag_split[1], version=tag_split[-1]))
+            #    else:
+            #        similar_tags.append(ModelTagData(model_name=tag_split[0], version=tag_split[-1]))
+            #    if similar_tags[-1].model_name != model_name:
+            #        del similar_tags[-1]
+           
+        # if the model has a history, and the provided model name is empty then we assume its an update/improvement of the same model
+        if version=="auto" and previous_model_tag_data != False and (model_name == previous_model_tag_data.model_name or model_name == ""):
+            version = '.'.join(map(str, str(int(''.join(map(str, str(previous_model_tag_data.version).split('.')))) + 1)))
 
-            found_model_tags = [
-                ModelTagData(str(ftag).split('-', 2)[0], str(ftag).split('-', 2)[1], str(ftag).split('-', 2)[2],
-                             str(ftag.commit))
-                if len(str(ftag).split('-', 2)) == 3
-                else ModelTagData(str(ftag).split('-', 2)[0], "", str(ftag).split('-', 2)[1], str(ftag.commit))
-                for ftag in found_model_tags]
-
-            split_current_model_tag_name = str(current_tag).split('-', 2)
-            current_model_tag = ModelTagData(model_name=split_current_model_tag_name[0],
-                                             parent_mode_name=split_current_model_tag_name[1],
-                                             version=split_current_model_tag_name[2],
-                                             commit_hash=str(current_tag.commit)) \
-                                if len(split_current_model_tag_name) == 3 \
-                                else \
-                                ModelTagData(model_name=split_current_model_tag_name[0], parent_model_name="",
-                                             version=split_current_model_tag_name[1],
-                                             commit_hash=str(current_tag.commit)) \
-                                    if current_tag is not None else None
-
-            # found_parent_model_tags = [ found_model_tag
-            #        for found_model_tag in found_model_tags 
-            #        if not found_model_tag.parent_model_name
-            #    ]
-
-            if current_model_tag is not None and model_name != current_model_tag.model_name:
-                print(" ### WARNING ! ### Current given model_name differs from the repo TAG model name : ", model_name,
-                      " vs ", current_model_tag.model_name)
-
-            if found_model_tags:
-                if current_model_tag is not None:
-                    if current_model_tag.model_name == model_name:
-                        # parent_tags_with_curr_model = [tag for tag in found_parent_model_tags
-                        #                               if current_model_tag.parent_model_name == tag.parent_model_name and current_model_tag.commit_hash == tag.commit_hash]
-                        # print(parent_tags_with_curr_model)
-                        if version == "auto":
-                            version = '.'.join(
-                                map(str, str(int(''.join(map(str, str(current_model_tag.version).split('.')))) + 1)))
-                            # need to trace parent_model_version....
-                        if current_model_tag.parent_model_name != "":
-                            parent_model_name = current_model_tag.parent_model_name
-                            version = "1.0"
-                    elif current_model_tag.model_name != model_name:
-                        # if we find that the model names are different, we assume they have the same parent,
-                        # if the previous model has no parent, then it will become the parent of this model
-                        if current_model_tag.parent_model_name != "":
-                            parent_model_name = current_model_tag.parent_model_name
-                        else:
-                            parent_model_name = current_model_tag.model_name
-                        version = "1.0"
-
-            elif current_model_tag is not None:
-                if current_model_tag.model_name != model_name:
-                    # if we find that the model names are different, we assume they have the same parent,
-                    # if the previous model has no parent, then it will become the parent of this model
-                    if not current_model_tag.parent_model_name:
-                        parent_model_name = current_model_tag.parent_model_name
-                    else:
-                        parent_model_name = current_model_tag.model_name
-
-                    version = "1.0"
-                elif version == "auto":
-                    version = '.'.join(
-                        map(str, str(int(''.join(map(str, str(current_model_tag.version).split('.')))) + 1)))
-            else:
-                version = "1.0"
-
+        # if its still auto then it means it is a new release
         if version == "auto":
             version = "1.0"
 
@@ -423,10 +376,10 @@ def generate_model_name(repo, model_name, parent_model_name, version):
         version = "1.0"
         logging.error("Error when generating model tag/release name: " + repr(exception))
 
-    return model_name, parent_model_name, version
+    return version
 
 
-def package(model_name, parent_model_name="", version="auto"):
+def package(model_name="", parent_model_name="", version="auto"):
 
     #print("parent model specified: ", "")
     #print("vresion specified : ", version )
@@ -435,8 +388,8 @@ def package(model_name, parent_model_name="", version="auto"):
     # git config credential.helper 'cache --timeout=300'
 
     #subprocess.run(["git", "config", "credential.helper", "'cache --timeout=400'"])
-    env_git_auth_token = get_auth_environemnt_vars()["git_auth_token"]
-    env_git_repo_url = get_auth_environemnt_vars()["git_repo_url"]
+    env_git_auth_token = get_auth_environment_vars()["git_auth_token"]
+    env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
 
     upload_model(model_name, parent_model_name=parent_model_name, version=version, git_auth_token=env_git_auth_token, git_repo_url=env_git_repo_url)
 
