@@ -1,5 +1,6 @@
 """ Representation class for CDB data
 """
+import logging
 import pickle
 import numpy as np
 from scipy.sparse import dok_matrix
@@ -9,6 +10,7 @@ from medcat.utils.attr_dict import AttrDict
 from medcat.utils.loggers import basic_logger
 import os
 import pandas as pd
+from medcat.cli import ModelTagData, system_utils
 
 log = basic_logger("cdb")
 class CDB(object):
@@ -51,6 +53,8 @@ class CDB(object):
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
         self.sim_vectors = None
 
+        # Model Version Control variables
+        self.vc_model_tag_data = ModelTagData()
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
                     is_pref_name=False, tui=None, pretty_name='',
@@ -401,13 +405,45 @@ class CDB(object):
         with open(path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_save_path=".",  output_file_name="cdb.dat"):
+        """
+            This method should NOT be used outside of version control purposes. Use the save() method instead.
+        
+            Saves variables of this object
+            Files saved are in the model's folder
+        """
+        if model_name.strip() != "":
+            self.vc_model_tag_data.model_name = model_name
+        if parent_model_name.strip() != "":
+            self.vc_model_tag_data.parent_model_name = parent_model_name
+        if model_version_number.strip() != "":
+            self.vc_model_tag_data.version = model_version_number
+        if commit_hash.strip() != "":
+            self.vc_model_tag_data.commit_hash = commit_hash
+        if git_repo_url.strip() != "":
+            self.vc_model_tag_data.git_repo = git_repo_url
+
+        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
+            pickle.dump(self, f)
+         
+    @classmethod     
+    def load_model(self, model_full_tag_name, input_file_name="cdb.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name)
+        if isinstance(data, dict):
+            obj = CDB()
+            obj.__dict__ = data
+            return obj
+        else:
+            return data
 
     def load_dict(self, path):
         """ Loads variables of this object
         """
         with open(path, 'rb') as f:
             self.__dict__ = pickle.load(f)
-
 
     def import_training(self, cdb, overwrite=True):
         r'''

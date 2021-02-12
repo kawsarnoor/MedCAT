@@ -1,0 +1,3 @@
+MEDCAT_GIT_USERNAME="username"
+MEDCAT_GIT_AUTH_TOKEN="key_hash"
+MEDCAT_GIT_REPO_URL="https://github.com/user/repo_name.git"

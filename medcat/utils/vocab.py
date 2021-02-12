@@ -1,5 +1,8 @@
+import logging
 import numpy as np
 import pickle
+import os
+from medcat.cli import ModelTagData, system_utils
 
 class Vocab(object):
     def __init__(self):
@@ -7,7 +10,9 @@ class Vocab(object):
         self.index2word = {}
         self.vec_index2word = {}
         self.unigram_table = []
-
+        
+        # Model Version Control variables
+        self.vc_model_tag_data = ModelTagData()
 
     def inc_or_add(self, word, cnt=1, vec=None):
         if word not in self.vocab:
@@ -15,13 +20,11 @@ class Vocab(object):
         else:
             self.inc_wc(word)
 
-
     def remove_all_vectors(self):
         self.vec_index2word = {}
 
         for word in self.vocab:
             self.vocab[word]['vec'] = None
-
 
     def remove_words_below_cnt(self, cnt):
         print("Words before removal: " + str(len(self.vocab)))
@@ -40,7 +43,6 @@ class Vocab(object):
 
             if self.vocab[word]['vec'] is not None:
                 self.vec_index2word[ind] = word
-
 
     def inc_wc(self, word):
         self.item(word)['cnt'] += 1
@@ -63,6 +65,41 @@ class Vocab(object):
             if token in self:
                 self.vocab[token]['cnt'] += 1
 
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", parent_model_tag="", output_save_path=".",  output_file_name="vocab.dat"):
+        """
+            This method should NOT be used outside of version control purposes. Use the save() method instead.
+       
+            Saves variables of this object
+            Files saved are in the model's folder
+        """
+        if model_name.strip() != "":
+            self.vc_model_tag_data.model_name = model_name
+        if parent_model_name.strip() != "":
+            self.vc_model_tag_data.parent_model_name = parent_model_name
+        if model_version_number.strip() != "":
+            self.vc_model_tag_data.version = model_version_number
+        if commit_hash.strip() != "":
+            self.vc_model_tag_data.commit_hash = commit_hash
+        if git_repo_url.strip() != "":
+            self.vc_model_tag_data.git_repo = git_repo_url
+        if parent_model_tag.strip() != "":
+            self.vc_model_tag_data.parent_model_tag = parent_model_tag
+    
+        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
+            pickle.dump(self, f)
+         
+    @classmethod     
+    def load_model(self, model_full_tag_name, input_file_name="vocab.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name)
+        if isinstance(data, dict):
+            obj = Vocab()
+            obj.__dict__ = data
+            return obj
+        else:
+            return data
 
     def add_word(self, word, cnt=1, vec=None, replace=True):
         """Add a word to the vocabulary

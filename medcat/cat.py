@@ -1,3 +1,4 @@
+from medcat.cli import system_utils
 import os
 import json
 import pandas
@@ -10,6 +11,7 @@ from medcat.spacy_cat import SpacyCat
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.utils.spelling import CustomSpellChecker
 from medcat.utils.spacy_pipe import SpacyPipe
+from medcat.utils.vocab import Vocab
 from medcat.preprocessing.cleaners import spacy_tag_punct
 from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
 from medcat.utils.loggers import basic_logger
@@ -93,6 +95,24 @@ class CAT(object):
         '''
         return self.nlp(text)
 
+    def save_model(self, model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat"):
+        self.vocab.save_model(output_file_name=vocab_output_file_name)
+        self.cdb.save_model(output_file_name=cdb_output_file_name)
+
+    @classmethod
+    def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+        vocab = Vocab.load_model(model_full_tag_name=model_full_tag_name, input_file_name=vocab_input_file_name)
+        cdb = CDB.load_model(model_full_tag_name=model_full_tag_name, input_file_name=cdb_input_file_name)
+
+        if vocab is False:
+            print("Could not load vocabulary from model:", model_full_tag_name)
+        if cdb is False:
+            print("Could not load concept database from model:", model_full_tag_name)
+        
+        return CAT(cdb, vocab=vocab)
 
     def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=None, anneal=None, spacy_doc=None):
         if spacy_doc is None:
@@ -151,7 +171,7 @@ class CAT(object):
 
                         if len(self.cdb.name2cui[name]) == 0:
                             del self.cdb.name2cui[name]
-
+    
 
     def _add_name(self, cui, source_val, is_pref_name, only_new=False, desc=None, tui=None):
         r'''
