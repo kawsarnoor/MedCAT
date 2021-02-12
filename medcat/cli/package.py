@@ -40,7 +40,7 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
     """
     """
     if previous_model_tag_data is not False:
-        print("The model you want to package is based on the following model:" + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
+        print("The model you want to package is based on the following model:" + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
         if model_name == "":
             model_name = previous_model_tag_data.model_name
 
