@@ -8,7 +8,7 @@ import logging
 import shutil
 import dvc
 from git import Repo
-from .download import get_all_available_model_tags
+from .download import get_all_available_model_tags, get_matching_version
 from .system_utils import *
 from .modeltagdata import ModelTagData
 
@@ -131,6 +131,18 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
     # create folder for new model release
     # folder where the original model files are: /lib/python/site-packages/medcat-{version}/models/...
     new_model_package_folder = os.path.join(get_local_model_storage_path(), tag_name)
+    
+    if get_downloaded_local_model_folder(tag_name):
+        #if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
+        shutil.rmtree(new_model_package_folder, ignore_errors=True)
+
+    create_model_folder(tag_name)
+
+    # check to see if there is a tag with the same name, (this is only useful in case the dvc push fails, )
+    #result = get_matching_version(tag_name, request_url, headers)
+
+    #if result["request_success"]:
+    #    create_new_base_repository(new_model_package_folder, git_repo_url, checkout_full_tag_name=tag_name)
 
     #if get_downloaded_local_model_folder(tag_name):
     #    if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
@@ -339,7 +351,7 @@ def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_
         model_card = model_card.replace("<parent_model_tag>", parent_model_tag_url)
         model_card = model_card.replace("<model_version>", version)
     else:
-        print("Could not find model card file that holds a brief summary of the model data & specs.")
+        logging.error("Could not find model card file that holds a brief summary of the model data & specs.")
 
     return model_card
 

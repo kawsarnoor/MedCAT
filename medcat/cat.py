@@ -104,8 +104,9 @@ class CAT(object):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-        vocab = Vocab.load_model(model_full_tag_name, vocab_input_file_name)
-        cdb = CDB.load_model(model_full_tag_name, cdb_input_file_name)
+        
+        vocab = Vocab.load_model(model_full_tag_name=model_full_tag_name, input_file_name=vocab_input_file_name)
+        cdb = CDB.load_model(model_full_tag_name=model_full_tag_name, input_file_name=cdb_input_file_name)
 
         if vocab is False:
             print("Could not load vocabulary from model:", model_full_tag_name)

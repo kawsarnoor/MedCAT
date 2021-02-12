@@ -431,7 +431,7 @@ class CDB(object):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-        data = system_utils.load_model_from_file(model_full_tag_name, input_file_name)
+        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name)
         if isinstance(data, dict):
             obj = CDB()
             obj.__dict__ = data
