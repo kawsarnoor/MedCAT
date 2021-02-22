@@ -389,7 +389,7 @@ def generate_model_version(request_url, headers, model_name, version, previous_m
     return version
 
 
-def package(model_name="", parent_model_name="", version="auto"):
+def package(full_model_tag_name="", version="auto"):
 
     #print("parent model specified: ", "")
     #print("vresion specified : ", version )
@@ -401,7 +401,7 @@ def package(model_name="", parent_model_name="", version="auto"):
     env_git_auth_token = get_auth_environment_vars()["git_auth_token"]
     env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
 
-    upload_model(model_name, parent_model_name=parent_model_name, version=version, git_auth_token=env_git_auth_token, git_repo_url=env_git_repo_url)
+    upload_model(full_model_tag_name, parent_model_name="", version=version, git_auth_token=env_git_auth_token, git_repo_url=env_git_repo_url)
 
 if __name__ == '__main__':
     fire.Fire(package)
