@@ -1,3 +1,4 @@
+from medcat.cli.config import get_auth_environment_vars, get_git_api_request_url, get_git_default_headers, get_git_upload_headers, get_git_user_project
 import fire
 import requests
 import sys
@@ -8,13 +9,11 @@ import logging
 import shutil
 import dvc
 from git import Repo
-from .download import get_all_available_model_tags, get_matching_version
+from .download import get_all_available_model_tags
 from .system_utils import *
 from .modeltagdata import ModelTagData
 
-logging.basicConfig(level=logging.INFO)
-
-def verify_model_package(request_url, headers, full_model_tag_name, git_auth_token):
+def verify_model_package(request_url, headers, full_model_tag_name):
 
     available_model_tags = get_all_available_model_tags(request_url, headers)
     found_matching_tags = [tag_name for tag_name in available_model_tags if full_model_tag_name in tag_name] 
@@ -38,6 +37,8 @@ def verify_model_package(request_url, headers, full_model_tag_name, git_auth_tok
 
 def select_model_package_and_name(model_name, previous_model_tag_data=False, predicted_version="1.0"):
     """
+        Allows the user to select the model's name according to previous model history.
+        :return: model name and bool if its a new release 
     """
     if previous_model_tag_data is not False:
         print("The model you want to package is based on the following model:" + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
@@ -54,15 +55,17 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
                     if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " + "\033[1m" + "<new_model_name>-1.0" + "\033[0m" ):
                         model_name = input("Give the model tag a name, the version will be 1.0 by default:")
                         is_new_release = True
-                break
+                        break
+                else:
+                    break
 
             elif previous_model_tag_data != False and model_name != previous_model_tag_data.model_name:
                 if prompt_statement("Do you want to create a specialist model tag? e.g : " + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> "+ "\033[1m" + model_name + "-1.0" + "\033[0m" ):
                     print("Using "  + "\033[1m" + model_name  + "\033[0m" + " as the new model name.")
                 else:
                     model_name = input("Give the model tag a name, the version will be 1.0 by default:")
-                    break
                 is_new_release = True
+                break
             else:
                 is_new_release = True
                 if prompt_statement("This is a new model release (version will be set to 1.0 by default), are you satisified with the name ? given name : " + "\033[1m" + model_name + "\033[0m" + " . The tag will be :" + "\033[1m" + model_name + "-1.0" +  "\033[0m"  ):
@@ -98,16 +101,14 @@ def detect_model_name_from_files(model_folder_path="."):
                 return loaded_model_file.vc_model_tag_data
     return False
 
-def upload_model(model_name, parent_model_name, version, git_auth_token, git_repo_url):
-    headers = {"Accept": "application/vnd.github.v3+json", "Authorization": "token " + git_auth_token}
-    upload_headers = {**headers, "Content-Type": "application/octet-stream"}
-
-    user_repo_and_project = '/'.join(git_repo_url.split('.git')[0].split('/')[-2:]) 
-    #user_repo_and_project = '/'.join(repo.remotes.origin.url.split('.git')[0].split('/')[-2:])
+def upload_model(model_name, parent_model_name, version):
+ 
+    upload_headers = get_git_upload_headers()
+    headers = get_git_default_headers()
     
-    request_url = 'https://api.github.com/repos/' + user_repo_and_project + "/"
-    git_api_repo_base_url = "https://api.github.com/repos/" + user_repo_and_project
-    uploads_git_repo_base_url = "https://uploads.github.com/repos/" + user_repo_and_project
+    git_repo_url = get_auth_environment_vars()["git_repo_url"]
+    git_api_repo_base_url = "https://api.github.com/repos/" + get_git_user_project()
+    uploads_git_repo_base_url = "https://uploads.github.com/repos/" + get_git_user_project()
       
     # folder where we are now (where we called the package command)
     current_folder = os.getcwd()
@@ -116,7 +117,7 @@ def upload_model(model_name, parent_model_name, version, git_auth_token, git_rep
     previous_tag_model_data = detect_model_name_from_files()
 
     # this is the predicted version number, will change to 1.0 if its a new release
-    version = generate_model_version(request_url, headers, model_name, version, previous_tag_model_data) 
+    version = generate_model_version(model_name, version, previous_tag_model_data) 
 
     # determine the final model name
     model_name, is_new_release = select_model_package_and_name(model_name, previous_tag_model_data, predicted_version=version)
@@ -354,10 +355,9 @@ def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_
     return model_card
 
 
-def generate_model_version(request_url, headers, model_name, version, previous_model_tag_data=False):
-
+def generate_model_version(model_name, version, previous_model_tag_data=False):
     try:
-        tags = get_all_available_model_tags(request_url, headers)
+        tags = get_all_available_model_tags()
 
         if tags:
             similar_tag_names = [tag for tag in tags if model_name in str(tag)]
@@ -388,20 +388,9 @@ def generate_model_version(request_url, headers, model_name, version, previous_m
 
     return version
 
-
 def package(full_model_tag_name="", version="auto"):
-
-    #print("parent model specified: ", "")
-    #print("vresion specified : ", version )
-
-    # TODO : implement credential cache
-    # git config credential.helper 'cache --timeout=300'
-
-    #subprocess.run(["git", "config", "credential.helper", "'cache --timeout=400'"])
-    env_git_auth_token = get_auth_environment_vars()["git_auth_token"]
-    env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
-
-    upload_model(full_model_tag_name, parent_model_name="", version=version, git_auth_token=env_git_auth_token, git_repo_url=env_git_repo_url)
+    #subprocess.run(["git", "config", "--global", "credential.helper", "cache"])
+    upload_model(full_model_tag_name, parent_model_name="", version=version)
 
 if __name__ == '__main__':
     fire.Fire(package)

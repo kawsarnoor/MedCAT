@@ -1,3 +1,4 @@
+from medcat.cli.system_utils import prompt_statement
 import sys
 import fire
 import os
@@ -14,12 +15,21 @@ env_var_field_mapping = {
 
 def config():
     config_data = {}
+    
     for k,v in env_var_field_mapping.items():
         while True:
             input_val = input("Please input your " + k + " (" + v + ") : ")
-            if input_val.strip() != "":
-                config_data[v] = input_val.strip()
-                break
+            if input_val.strip() != "" or k == "git_organisation_name":
+                if k == "git_organisation_name":
+                    config_data[v] = get_git_user_project(config_data[env_var_field_mapping["git_repo_url"]]).split("/")[0]
+                    logging.info(" " + env_var_field_mapping[k] + " not set, inferring ORGANISATION name from the git repo : " + "\033[1m" +  config_data[env_var_field_mapping["git_repo_url"]] + "\033[0m" +
+                                 " \n the organisation name will be : " + config_data[v])
+                    if prompt_statement("Is this correct ?"):
+                        break
+                else:
+                    config_data[v] = input_val.strip()
+                    break
+
     generate_medcat_config_file(config_data)
 
 def get_auth_environment_vars():
@@ -38,10 +48,10 @@ def get_auth_environment_vars():
         for k,v in auth_vars.items():
             if v.strip() == "" and env_var_field_mapping[k] in env_medcat_config_file.keys() and env_medcat_config_file[env_var_field_mapping[k]] != "":
                 auth_vars[k] = env_medcat_config_file[env_var_field_mapping[k]]
-            elif k == "git_organisation_name":
-                auth_vars[k] = get_git_user_project().split("/")[0]
+            elif v.strip() == "" and k == "git_organisation_name":
+                auth_vars[k] = get_git_user_project(env_medcat_config_file[env_var_field_mapping[k]]).split("/")[0]
             else:
-                logging.error("Please set your configuration settings by using the 'python3 -m medcat config' command !")
+                logging.error("Please set your configuration settings by using the 'python3 -m medcat config' command or by exporting the global variable in your current session 'export " + env_var_field_mapping[k] + "=your_value' !")
                 raise ValueError("CONFIG NOT SET for :  " + k + "  , from environment var : " + env_var_field_mapping[k])
 
     except Exception as exception:
@@ -51,8 +61,8 @@ def get_auth_environment_vars():
     return auth_vars
 
 def generate_medcat_config_file(config_settings={}, config_dirname="config", config_file="env_version_control.json"):
+    config_path = os.path.join(os.path.dirname(medcat.__file__), config_dirname)
     try:
-        config_path = os.path.join(os.path.dirname(medcat.__file__), config_dirname)
         if os.path.isdir(config_path) is False:
             os.makedirs(config_path)  
     except Exception as exception:
@@ -61,6 +71,7 @@ def generate_medcat_config_file(config_settings={}, config_dirname="config", con
 
     with open(os.path.join(config_path, config_file), "w") as f:
         json.dump(config_settings, f)
+        logging.info("Config file saved in : " + str(os.path.join(config_path, config_file)))
 
 def get_medcat_config_settings(config_dirname="config", config_file="env_version_control.json"):
     config_file_contents = {}
@@ -70,11 +81,14 @@ def get_medcat_config_settings(config_dirname="config", config_file="env_version
             config_file_contents = json.load(f)
     return config_file_contents    
 
-def get_git_user_project():
+def get_git_user_project(url=""):
     """
         :return: user/repo_name from git url, e.g: https://github.com/user/repo_name -> user/repo_name
     """
-    env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
+    if url.strip() == "":
+        env_git_repo_url = get_auth_environment_vars()["git_repo_url"]
+    else:
+        env_git_repo_url = url
     user_repo_and_project = '/'.join(env_git_repo_url.split('.git')[0].split('/')[-2:])
     return user_repo_and_project
 

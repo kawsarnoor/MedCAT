@@ -1,4 +1,5 @@
 import shutil
+import stat
 import subprocess
 import git
 import os
@@ -7,6 +8,8 @@ import pickle
 import logging
 import medcat
 from .modeltagdata import ModelTagData
+if os.name == "nt":
+    import win32api, win32con
 
 def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False):
     """
@@ -19,7 +22,7 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
         full_file_path = os.path.join(get_downloaded_local_model_folder(full_model_tag_name), file_name)
 
     data = False
-    with open(full_file_path, 'rb') as f:
+    with open(full_file_path, "rb") as f:
         data = pickle.load(f)
 
         version = ""
@@ -51,25 +54,7 @@ def get_str_model_version(model_full_tag_name, delimiter='-'):
         version = split_name_and_version[1]
     return model_name, version
 
-def get_auth_environment_vars():
-    """
-        returns a dict with the github username and git access token
-    """
-    env_var_field_mapping = {"username": "MEDCAT_GIT_USERNAME",
-     "git_auth_token" : "MEDCAT_GIT_AUTH_TOKEN",
-      "git_repo_url" : "MEDCAT_GIT_REPO_URL"}
-
-    auth_vars = { "username" : os.getenv(env_var_field_mapping["username"], ""), 
-                  "git_auth_token": os.getenv(env_var_field_mapping["git_auth_token"], ""),
-                  "git_repo_url":  os.getenv(env_var_field_mapping["git_repo_url"], "") }
-    
-    for k,v in auth_vars.items():
-        if not v.strip():
-            raise ValueError("CONFIG NOT SET for :  " + k + "  , from environment var : " + env_var_field_mapping[k])
-
-    return auth_vars
-
-def prompt_statement(prompt_text, answer="yes"):
+def prompt_statement(prompt_text, default_answer="yes"):
     valid_answers = {"yes": True, "no": False, "y": True, "n": False}
     exit_answer = ["exit", "cancel", "abort"]
     
@@ -90,7 +75,7 @@ def create_model_folder(full_model_tag_name):
         os.makedirs(os.path.join(get_local_model_storage_path(),full_model_tag_name))
     except Exception as exception:
         logging.info("Could not create model folder " + full_model_tag_name + ".")
-        logging.info("" + repr(exception))
+        logging.info(repr(exception))
 
 def get_downloaded_local_model_folder(full_model_tag_name):
     """
@@ -152,7 +137,6 @@ def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="orig
 
         subprocess.run(["git", "pull", remote_name, branch], cwd=repo_folder_path)
 
-
     except Exception as exception:
         logging.error("Error creating base model repository: " + repr(exception))
         sys.exit()
@@ -165,6 +149,26 @@ def is_dir_git_repository(path):
         logging.error("Folder:" + path + " is not a git repository. Description:" + repr(exception))
         return False
 
+def file_is_hidden(path):
+    if os.name == "nt":
+        attribute = win32api.GetFileAttributes(path)
+        return attribute & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
+    else:
+        return path.startswith('.')
+
+def force_delete_path(path):
+    if os.name == "nt":
+        win32api.SetFileAttributes(path, win32con.FILE_ATTRIBUTE_NORMAL)
+    for root, dirs, files in os.walk(path):  
+        for dir in dirs:
+            os.chmod(os.path.join(root, dir), stat.S_IRWXU)
+        for file in files:
+            os.chmod(os.path.join(root, file), stat.S_IRWXU)
+    if os.path.isdir(path):
+        shutil.rmtree(path, ignore_errors=True)
+    elif os.path.isfile(path):
+        os.remove(path)
+
 def sanitize_input():
     pass
 
@@ -172,4 +176,4 @@ def get_file_ext_to_ignore():
     return ["*.dat"]
 
 def get_permitted_push_file_list():
-    return ["cdb.dat", "vocab.dat", "modelcard.md", "modelcard.json"]
+    return ["cdb.dat", "vocab.dat", "modelcard.md", "modelcard.json", "MedCAT_Export.json"]
