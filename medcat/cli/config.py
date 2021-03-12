@@ -10,7 +10,7 @@ env_var_field_mapping = {
                          "username": "MEDCAT_GIT_USERNAME",
                          "git_auth_token" : "MEDCAT_GIT_AUTH_TOKEN",
                          "git_repo_url" : "MEDCAT_GIT_REPO_URL",
-                         "git_organisation_name" : "MEDCAT_ORGANISATION_NAME"
+                         "git_organisation_name" : "MEDCAT_GIT_ORGANISATION_NAME"
                         }
 
 def config():
@@ -19,16 +19,15 @@ def config():
     for k,v in env_var_field_mapping.items():
         while True:
             input_val = input("Please input your " + k + " (" + v + ") : ")
-            if input_val.strip() != "" or k == "git_organisation_name":
-                if k == "git_organisation_name":
-                    config_data[v] = get_git_user_project(config_data[env_var_field_mapping["git_repo_url"]]).split("/")[0]
-                    logging.info(" " + env_var_field_mapping[k] + " not set, inferring ORGANISATION name from the git repo : " + "\033[1m" +  config_data[env_var_field_mapping["git_repo_url"]] + "\033[0m" +
-                                 " \n the organisation name will be : " + config_data[v])
-                    if prompt_statement("Is this correct ?"):
-                        break
-                else:
-                    config_data[v] = input_val.strip()
+            if k == "git_organisation_name" and input_val.strip() == "":
+                config_data[v] = get_git_user_project(config_data[env_var_field_mapping["git_repo_url"]]).split("/")[0]
+                logging.info(" " + env_var_field_mapping[k] + " not set, inferring ORGANISATION name from the git repo : " + "\033[1m" +  config_data[env_var_field_mapping["git_repo_url"]] + "\033[0m" +
+                                " \n the organisation name will be : " + config_data[v])
+                if prompt_statement("Is this correct ?"):
                     break
+            if input_val.strip() != "":
+                config_data[v] = input_val.strip()
+                break
 
     generate_medcat_config_file(config_data)
 
@@ -48,9 +47,7 @@ def get_auth_environment_vars():
         for k,v in auth_vars.items():
             if v.strip() == "" and env_var_field_mapping[k] in env_medcat_config_file.keys() and env_medcat_config_file[env_var_field_mapping[k]] != "":
                 auth_vars[k] = env_medcat_config_file[env_var_field_mapping[k]]
-            elif v.strip() == "" and k == "git_organisation_name":
-                auth_vars[k] = get_git_user_project(env_medcat_config_file[env_var_field_mapping[k]]).split("/")[0]
-            else:
+            if auth_vars[k].strip() == "":
                 logging.error("Please set your configuration settings by using the 'python3 -m medcat config' command or by exporting the global variable in your current session 'export " + env_var_field_mapping[k] + "=your_value' !")
                 raise ValueError("CONFIG NOT SET for :  " + k + "  , from environment var : " + env_var_field_mapping[k])
 

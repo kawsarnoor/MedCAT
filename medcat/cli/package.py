@@ -48,6 +48,7 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
     is_new_release = False
 
     if model_name != "":
+        print("Please use only alphabet characters (a-Z, A-Z), no numbers and no symbols accepted besides underscore '_' . Invalid characters will be removed.")
         while True:
             if previous_model_tag_data != False and model_name == previous_model_tag_data.model_name:
                 if prompt_statement("\n Do you want to update the tag number of an existing model ? (improvement of model)  e.g : " + "\033[1m" + model_name + "-" + previous_model_tag_data.version + "\033[0m" + " -> " 
@@ -73,7 +74,12 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
                 else:
                     model_name = input("Give the model tag a name, the version will be 1.0 by default:")
                     break
-        
+
+        if not is_input_valid(model_name):
+            print("Invalid characters detected in the model name, the new model name will be:" + sanitize_input(model_name))
+            if not prompt_statement("Proceed ? (answering NO will return you to the model name selection process)"):
+                select_model_package_and_name(sanitize_input(model_name))
+
         if model_name != "":
             return model_name, is_new_release
         

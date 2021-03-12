@@ -6,6 +6,7 @@ import os
 import sys
 import pickle
 import logging
+import re
 import medcat
 from .modeltagdata import ModelTagData
 if os.name == "nt":
@@ -169,9 +170,12 @@ def force_delete_path(path):
     elif os.path.isfile(path):
         os.remove(path)
 
-def sanitize_input():
-    pass
+def sanitize_input(input_string):
+    return re.compile('[^a-zA-Z\_]').sub('', input_string)
 
+def is_input_valid(input_string):
+    return len(input_string) == len(sanitize_input(input_string))
+    
 def get_file_ext_to_ignore():
     return ["*.dat"]
 
