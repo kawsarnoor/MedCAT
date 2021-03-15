@@ -264,13 +264,21 @@ def upload_model(model_name, parent_model_name, version):
 
                 repo.remotes.origin.push(new_tag)
 
+                model_card_info_string, model_card_info_json = generate_model_card_info(git_repo_url, 
+                                                                                        model_name, 
+                                                                                        parent_model_name, 
+                                                                                        new_model_package_folder, 
+                                                                                        version, 
+                                                                                        tag_name, 
+                                                                                        parent_model_tag)
+
                 tag_data = {
                     "tag_name" :  tag_name, # user_repo_and_project.split('/')[1] + "-" + tag_name
                     "name" : release_name,
                     "draft" : False,
                     "prerelease" : False,
                     "target_commitish" : repo.head.commit.hexsha,
-                    "body" : generate_model_card_info(git_repo_url, model_name, parent_model_name, new_model_package_folder, version, tag_name, parent_model_tag)
+                    "body" : model_card_info_string
                 }
 
                 create_tag_request = requests.post(url=git_api_repo_base_url + "/releases", data=json.dumps(tag_data), headers=headers)
@@ -336,29 +344,50 @@ def upload_model(model_name, parent_model_name, version):
             os.remove(bundle_file_path)
     
 def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_folder_path, version="", tag_name="", parent_model_tag_name=""):
+    """
+       input:
+       -----
+           - model card information
+
+       output:
+       ------
+          - model_card string (to be used to display github releases page
+          - model_card_json object (json format for model card to be uploaded as asset to associated model release
+    """
+
+    model_card_json = {}
     model_card = ""
 
-    parent_model_tag_url = git_repo_url[:-4] + "/releases/tag/" + parent_model_tag_name if str(git_repo_url).endswith(".git") else ""
-    parent_model_tag_url = "<a href="+ parent_model_tag_url + ">" + parent_model_tag_name + "</a>"
+    model_card_json['model_name'] = model_name
+    model_card_json['tag_name'] = tag_name
+    model_card_json['version'] = version
+
 
     if parent_model_name == "":
-        parent_model_name = "N/A"
-        parent_model_tag_url = ""
+        model_card_json['parent_model_name'] = "N/A"
+        model_card_json['parent_model_tag_url'] = ""
+
+    else:
+        model_card_json['parent_model_tag_url'] = git_repo_url[:-4] + "/releases/tag/" + parent_model_tag_name if str(git_repo_url).endswith(".git") else ""
+        model_card_json['parent_model_tag_url'] = "<a href="+ parent_model_tag_url + ">" + parent_model_tag_name + "</a>"
+ 
+
 
     model_card_path = os.path.join(model_folder_path, "modelcard.md")
 
     if os.path.isfile(model_card_path):
         with open(model_card_path) as f:
             model_card = f.read()
-        model_card = model_card.replace("<model_name>-<parent_model_name>-<model_version>", tag_name)
-        model_card = model_card.replace("<model_name>", model_name)
-        model_card = model_card.replace("<parent_model_name>", parent_model_name)
-        model_card = model_card.replace("<parent_model_tag>", parent_model_tag_url)
-        model_card = model_card.replace("<model_version>", version)
+        model_card = model_card.replace("<model_name>-<parent_model_name>-<model_version>", model_card_json['tag_name'])
+        model_card = model_card.replace("<model_name>", model_card_json['model_name'])
+        model_card = model_card.replace("<parent_model_name>", model_card_json['parent_model_name'])
+        model_card = model_card.replace("<parent_model_tag>", model_card_json['parent_model_tag_url'])
+        model_card = model_card.replace("<model_version>", model_card_json['version'])
     else:
         logging.error("Could not find model card file that holds a brief summary of the model data & specs.")
 
-    return model_card
+    return model_card, model_card_json
+
 
 
 def generate_model_version(model_name, version, previous_model_tag_data=False):
@@ -367,7 +396,7 @@ def generate_model_version(model_name, version, previous_model_tag_data=False):
 
         if tags:
             similar_tag_names = [tag for tag in tags if model_name in str(tag)]
-            
+
             similar_tags = []
 
             #for tag_name in similar_tag_names:
